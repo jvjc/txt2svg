@@ -15,6 +15,10 @@ if(!font) {
 }
 
 TextToSVG.load(`./fonts/${font.replace(/ /g, '_')}.ttf`, function(err, textToSVG) {
+    if(err) {
+        console.error(err);
+        return false;
+    }
     const attributes = {
       fill: getValue(argv.fill, 'none'),
       stroke: getValue(argv.stroke, 'black')
@@ -27,7 +31,7 @@ TextToSVG.load(`./fonts/${font.replace(/ /g, '_')}.ttf`, function(err, textToSVG
       attributes: attributes
     };
     const svg = textToSVG.getSVG(argv.text, options);
-    console.log(svg);
+    console.log(svg.replace(/vector-effect="non-scaling-stroke"/g, ''));
 });
 
 function getValue(arg, defaultValue) {
