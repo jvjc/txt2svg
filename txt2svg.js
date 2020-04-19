@@ -2,6 +2,8 @@
 const argv = require('minimist')(process.argv.slice(2));
 const availableFonts = require('./fonts.json');
 const TextToSVG = require('text-to-svg');
+const jsdom = require('jsdom');
+const { JSDOM } = jsdom;
 
 if(!getValue(argv.text, false)) {
     console.error('text not defined');
@@ -18,22 +20,35 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
         console.error(err);
         return false;
     }
-    const attributes = {
-      fill: getValue(argv.fill, 'none'),
-      stroke: getValue(argv.stroke, 'black')
-    };
+    const attributes = {};
+
+    if(getValue(argv.fill)) {
+        attributes.fill = getValue(argv.fill, 'none');
+    }
+    if(getValue(argv.stroke)) {
+        attributes.stroke = getValue(argv.stroke, 'none');
+    }
+
     const options = {
-      x: 0,
-      y: 0,
-      fontSize: getValue(argv.size, 100),
-      anchor: 'top',
-      attributes: attributes
+        x: 0,
+        y: 0,
+        fontSize: 100,
+        anchor: 'top',
+        attributes: attributes
     };
     const svg = textToSVG.getSVG(argv.text, options);
-    console.log(svg.replace(/vector-effect="non-scaling-stroke"/g, ''));
+    const dom = new JSDOM(svg.replace(/vector-effect="non-scaling-stroke"/g, ''));
+    const domSVG = dom.window.document.body.children[0];
+    let width = domSVG.getAttribute('width');
+    let height = domSVG.getAttribute('height');
+    domSVG.setAttribute('viewbox', `0 0 ${width} ${height}`);
+    domSVG.setAttribute('width', getValue(argv.size, 100));
+    domSVG.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    domSVG.removeAttribute('height');
+    console.log(domSVG.outerHTML);
 });
 
-function getValue(arg, defaultValue) {
-    if(!arg || arg === true || arg < 0 || arg.toString().trim().length == 0) return defaultValue;
+function getValue(arg, defaultValue = false) {
+    if(!arg || arg == 'false' || arg === true || arg < 0 || arg.toString().trim().length == 0) return defaultValue;
     return arg;
 }

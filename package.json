@@ -1,6 +1,6 @@
 {
   "name": "txt2svg",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "",
   "main": "txt2svg.js",
   "scripts": {
@@ -15,6 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "get-google-fonts": "^1.2.2",
+    "jsdom": "^16.2.2",
     "minimist": "^1.2.5",
     "text-to-svg": "^3.1.5"
   }
