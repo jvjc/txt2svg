@@ -1,0 +1,17 @@
+{
+  "name": "txt2svg",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "postinstall": "node get-fonts.js",
+    "update-fonts": "node get-fonts.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "get-google-fonts": "^1.2.2",
+    "minimist": "^1.2.5",
+    "text-to-svg": "^3.1.5"
+  }
+}
