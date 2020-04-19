@@ -13,8 +13,7 @@ if(!font) {
     console.error('not available font');
     return false;
 }
-
-TextToSVG.load(`./fonts/${font.replace(/ /g, '_')}.ttf`, function(err, textToSVG) {
+TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err, textToSVG) {
     if(err) {
         console.error(err);
         return false;
