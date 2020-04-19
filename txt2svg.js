@@ -37,7 +37,7 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
         attributes: attributes
     };
     const svg = textToSVG.getSVG(argv.text, options);
-    const dom = new JSDOM(svg.replace(/vector-effect="non-scaling-stroke"/g, ''));
+    const dom = new JSDOM(svg);
     const domSVG = dom.window.document.body.children[0];
     let width = domSVG.getAttribute('width');
     let height = domSVG.getAttribute('height');
@@ -45,6 +45,7 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
     domSVG.setAttribute('width', getValue(argv.size, 100));
     domSVG.setAttribute('preserveAspectRatio', 'xMidYMid meet');
     domSVG.removeAttribute('height');
+    domSVG.removeAttribute('vector-effect');
     console.log(domSVG.outerHTML);
 });
 
