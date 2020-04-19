@@ -2,12 +2,16 @@
   "name": "txt2svg",
   "version": "1.0.0",
   "description": "",
-  "main": "index.js",
+  "main": "txt2svg.js",
   "scripts": {
     "postinstall": "node get-fonts.js",
     "update-fonts": "node get-fonts.js"
   },
-  "author": "",
+  "author": "Víctor Jiménez",
+  "bin": {
+    "txt2svg": "./txt2svg.js"
+  },
+  "preferGlobal": true,
   "license": "ISC",
   "dependencies": {
     "get-google-fonts": "^1.2.2",

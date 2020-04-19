@@ -1,3 +1,4 @@
+#!/usr/bin/env node
 const argv = require('minimist')(process.argv.slice(2));
 const availableFonts = require('./fonts.json');
 const TextToSVG = require('text-to-svg');
