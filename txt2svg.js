@@ -9,7 +9,7 @@ const { JSDOM } = jsdom;
 const mergedFonts = localFonts.concat(Object.keys(availableFonts));
 
 if(argv['available-fonts']) {
-    console.log(mergedFonts);
+    console.log(JSON.stringify(mergedFonts));
     return;
 }
 
