@@ -1,0 +1,24 @@
+@font-face {
+  font-family: 'Amatic SC';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Amatic SC Regular'), local('AmaticSC-Regular'), url('./Amatic_SC.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Bebas Neue';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Bebas Neue Regular'), local('BebasNeue-Regular'), url('./Bebas_Neue.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Knewave';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Knewave'), local('Knewave-Regular'), url('./Knewave.ttf') format('truetype');
+}
+@font-face {
+  font-family: 'Permanent Marker';
+  font-style: normal;
+  font-weight: 400;
+  src: local('Permanent Marker Regular'), local('PermanentMarker-Regular'), url('./Permanent_Marker.ttf') format('truetype');
+}

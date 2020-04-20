@@ -1,16 +1,24 @@
 #!/usr/bin/env node
 const argv = require('minimist')(process.argv.slice(2));
+const localFonts = require('./package.json').localFonts;
 const availableFonts = require('./fonts.json');
 const TextToSVG = require('text-to-svg');
 const jsdom = require('jsdom');
 const { JSDOM } = jsdom;
+
+const mergedFonts = localFonts.concat(Object.keys(availableFonts));
+
+if(argv['available-fonts']) {
+    console.log(mergedFonts);
+    return;
+}
 
 if(!getValue(argv.text, false)) {
     console.error('text not defined');
     return false;
 }
 
-const font = Object.keys(availableFonts)[getValue(argv.font, 0)];
+const font = mergedFonts[getValue(argv.font, 0)];
 if(!font) {
     console.error('not available font');
     return false;
