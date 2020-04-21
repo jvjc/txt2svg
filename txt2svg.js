@@ -71,20 +71,21 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
 
     const dom = new JSDOM(svg);
     const domSVG = dom.window.document.body.children[0];
+    const pointValue = 2.8346456693;
     if(getValue(argv.width, false) || getValue(argv.height, false)) {
         let width = domSVG.getAttribute('width');
         let height = domSVG.getAttribute('height');
 
         if(getValue(argv.width, false) && getValue(argv.height, false)) {
-            domSVG.setAttribute('width', argv.width * 2.83464565);
-            domSVG.setAttribute('height', argv.height * 2.83464565);
+            domSVG.setAttribute('width', argv.width * pointValue);
+            domSVG.setAttribute('height', argv.height * pointValue);
             domSVG.setAttribute('preserveAspectRatio', 'none');
         } else if(getValue(argv.width, false)) {
-            domSVG.setAttribute('width', argv.width * 2.83464565);
-            domSVG.setAttribute('height', (height * argv.width / width) * 2.83464565);
+            domSVG.setAttribute('width', argv.width * pointValue);
+            domSVG.setAttribute('height', (height * argv.width / width) * pointValue);
         } else {
-            domSVG.setAttribute('width', (width * argv.height / height) * 2.83464565);
-            domSVG.setAttribute('height', argv.height * 2.83464565);
+            domSVG.setAttribute('width', (width * argv.height / height) * pointValue);
+            domSVG.setAttribute('height', argv.height * pointValue);
         }
     }
     console.log(domSVG.outerHTML.replace(/vector-effect="non-scaling-stroke"/g, ''));
