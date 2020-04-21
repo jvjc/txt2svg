@@ -54,27 +54,40 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
         attributes.stroke = getValue(argv.stroke, 'none');
     }
 
-    const options = {
-        x: 0,
-        y: 0,
-        fontSize: 100,
-        anchor: 'top',
-        attributes: attributes
-    };
+    if(argv['get-metrics']) {
+        const options = {
+            x: 0,
+            y: 0,
+            fontSize: getValue(argv.size, 100),
+            anchor: 'top',
+            attributes: attributes
+        };
+        console.log(textToSVG.getMetrics(argv.text, options));
+        return;
+    }
+
     var textModel = new makerjs.models.Text(textToSVG.font, argv.text, getValue(argv.size, 100), false, false, undefined);
     const svg = makerjs.exporter.toSVG(textModel)
 
     const dom = new JSDOM(svg);
     const domSVG = dom.window.document.body.children[0];
-    if(argv.width) {
+    if(getValue(argv.width, false) || getValue(argv.height, false)) {
         let width = domSVG.getAttribute('width');
         let height = domSVG.getAttribute('height');
-        domSVG.setAttribute('viewbox', `0 0 ${width} ${height}`);
-        domSVG.setAttribute('width', getValue(argv.width, 100));
-        domSVG.setAttribute('height', height * getValue(argv.width, 100) / width);
+
+        if(getValue(argv.width, false) && getValue(argv.height, false)) {
+            domSVG.setAttribute('width', argv.width);
+            domSVG.setAttribute('height', argv.height);
+            domSVG.setAttribute('preserveAspectRatio', 'none');
+        } else if(getValue(argv.width, false)) {
+            domSVG.setAttribute('width', argv.width);
+            domSVG.setAttribute('height', height * argv.width / width);
+        } else {
+            domSVG.setAttribute('width', width * argv.height / height);
+            domSVG.setAttribute('height', argv.height);
+        }
     }    
-    domSVG.removeAttribute('vector-effect');
-    console.log(domSVG.outerHTML);
+    console.log(domSVG.outerHTML.replace(/vector-effect="non-scaling-stroke"/g, ''));
 });
 
 function getValue(arg, defaultValue = false) {
