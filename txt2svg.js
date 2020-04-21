@@ -66,7 +66,7 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
         return;
     }
 
-    var textModel = new makerjs.models.Text(textToSVG.font, argv.text, getValue(argv.size, 100), false, false, undefined);
+    var textModel = new makerjs.models.Text(textToSVG.font, argv.text, getValue(argv.size, 100), true, false, undefined);
     const svg = makerjs.exporter.toSVG(textModel)
 
     const dom = new JSDOM(svg);
