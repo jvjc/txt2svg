@@ -1,10 +1,10 @@
 {
   "name": "txt2svg",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "",
   "main": "txt2svg.js",
   "scripts": {
-    "postinstall": "node get-fonts.js"
+    "postinstall": "node txt2svg.js --get-fonts"
   },
   "author": "Víctor Jiménez",
   "bin": {
@@ -19,6 +19,5 @@
     "minimist": "^1.2.5",
     "text-to-svg": "^3.1.5"
   },
-  "localFonts": [
-  ]
+  "localFonts": []
 }
