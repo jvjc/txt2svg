@@ -3,6 +3,7 @@ const argv = require('minimist')(process.argv.slice(2));
 const localFonts = require('./package.json').localFonts;
 const availableFonts = require('./fonts.json');
 const TextToSVG = require('text-to-svg');
+const makerjs = require('makerjs');
 const jsdom = require('jsdom');
 const { JSDOM } = jsdom;
 
@@ -44,15 +45,18 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
         anchor: 'top',
         attributes: attributes
     };
-    const svg = textToSVG.getSVG(argv.text, options);
+    var textModel = new makerjs.models.Text(textToSVG.font, argv.text, getValue(argv.size, 100), false, false, undefined);
+    const svg = makerjs.exporter.toSVG(textModel)
+
     const dom = new JSDOM(svg);
     const domSVG = dom.window.document.body.children[0];
-    let width = domSVG.getAttribute('width');
-    let height = domSVG.getAttribute('height');
-    domSVG.setAttribute('viewbox', `0 0 ${width} ${height}`);
-    domSVG.setAttribute('width', getValue(argv.size, 100));
-    domSVG.setAttribute('preserveAspectRatio', 'xMidYMid meet');
-    domSVG.removeAttribute('height');
+    if(argv.width) {
+        let width = domSVG.getAttribute('width');
+        let height = domSVG.getAttribute('height');
+        domSVG.setAttribute('viewbox', `0 0 ${width} ${height}`);
+        domSVG.setAttribute('width', getValue(argv.width, 100));
+        domSVG.removeAttribute('height');
+    }    
     domSVG.removeAttribute('vector-effect');
     console.log(domSVG.outerHTML);
 });
