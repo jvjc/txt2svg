@@ -8,10 +8,6 @@ const makerjs = require('makerjs');
 const jsdom = require('jsdom');
 const { JSDOM } = jsdom;
 
-var fs = require('fs'),
-    PDFDocument = require('pdfkit'),
-    SVGtoPDF = require('svg-to-pdfkit');
-
 const mergedFonts = localFonts.concat(Object.keys(availableFonts));
 
 if(argv['available-fonts']) {
