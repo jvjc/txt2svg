@@ -8,6 +8,10 @@ const makerjs = require('makerjs');
 const jsdom = require('jsdom');
 const { JSDOM } = jsdom;
 
+var fs = require('fs'),
+    PDFDocument = require('pdfkit'),
+    SVGtoPDF = require('svg-to-pdfkit');
+
 const mergedFonts = localFonts.concat(Object.keys(availableFonts));
 
 if(argv['available-fonts']) {
@@ -67,7 +71,7 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
     }
 
     var textModel = new makerjs.models.Text(textToSVG.font, argv.text, getValue(argv.size, 100), true, false, undefined);
-    const svg = makerjs.exporter.toSVG(textModel)
+    const svg = makerjs.exporter.toSVG(textModel);
 
     const dom = new JSDOM(svg);
     const domSVG = dom.window.document.body.children[0];
@@ -76,17 +80,17 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
         let height = domSVG.getAttribute('height');
 
         if(getValue(argv.width, false) && getValue(argv.height, false)) {
-            domSVG.setAttribute('width', argv.width);
-            domSVG.setAttribute('height', argv.height);
+            domSVG.setAttribute('width', argv.width * 2.83464565);
+            domSVG.setAttribute('height', argv.height * 2.83464565);
             domSVG.setAttribute('preserveAspectRatio', 'none');
         } else if(getValue(argv.width, false)) {
-            domSVG.setAttribute('width', argv.width);
-            domSVG.setAttribute('height', height * argv.width / width);
+            domSVG.setAttribute('width', argv.width * 2.83464565);
+            domSVG.setAttribute('height', (height * argv.width / width) * 2.83464565);
         } else {
-            domSVG.setAttribute('width', width * argv.height / height);
-            domSVG.setAttribute('height', argv.height);
+            domSVG.setAttribute('width', (width * argv.height / height) * 2.83464565);
+            domSVG.setAttribute('height', argv.height * 2.83464565);
         }
-    }    
+    }
     console.log(domSVG.outerHTML.replace(/vector-effect="non-scaling-stroke"/g, ''));
 });
 
