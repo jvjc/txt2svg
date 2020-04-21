@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 const argv = require('minimist')(process.argv.slice(2));
 const localFonts = require('./package.json').localFonts;
+const GetGoogleFonts = require('get-google-fonts');
 const availableFonts = require('./fonts.json');
 const TextToSVG = require('text-to-svg');
 const makerjs = require('makerjs');
@@ -11,6 +12,21 @@ const mergedFonts = localFonts.concat(Object.keys(availableFonts));
 
 if(argv['available-fonts']) {
     console.log(JSON.stringify(mergedFonts));
+    return;
+}
+
+if(argv['update-fonts']) {
+    let ggf = new GetGoogleFonts({
+        userAgent: 'Wget/1.18',
+        template: '{_family}.{ext}'
+    });
+    ggf.download([
+        availableFonts
+    ]).then(() => {
+        console.log('Fuentes obtenidas');
+    }).catch((err) => {
+        console.error('Error al obtener las fuentes', err);
+    });
     return;
 }
 
@@ -55,7 +71,7 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
         let height = domSVG.getAttribute('height');
         domSVG.setAttribute('viewbox', `0 0 ${width} ${height}`);
         domSVG.setAttribute('width', getValue(argv.width, 100));
-        domSVG.removeAttribute('height');
+        domSVG.setAttribute('height', height * getValue(argv.width, 100) / width);
     }    
     domSVG.removeAttribute('vector-effect');
     console.log(domSVG.outerHTML);

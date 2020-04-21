@@ -4,8 +4,7 @@
   "description": "",
   "main": "txt2svg.js",
   "scripts": {
-    "postinstall": "node get-fonts.js",
-    "update-fonts": "node get-fonts.js"
+    "postinstall": "node get-fonts.js"
   },
   "author": "Víctor Jiménez",
   "bin": {
