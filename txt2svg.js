@@ -35,6 +35,8 @@ if(!getValue(argv.text, false)) {
     return false;
 }
 
+let inputText = argv.text.replace(/[^a-zA-ZÀ-ú0-9 \\!?¿¡:)(;<=>]/gu, '');
+
 const font = mergedFonts[getValue(argv.font, 0)];
 if(!font) {
     console.error('not available font');
@@ -62,11 +64,11 @@ TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err
             anchor: 'top',
             attributes: attributes
         };
-        console.log(textToSVG.getMetrics(argv.text, options));
+        console.log(JSON.stringify(textToSVG.getMetrics(inputText, options)));
         return;
     }
 
-    var textModel = new makerjs.models.Text(textToSVG.font, argv.text, getValue(argv.size, 100), true, false, undefined);
+    var textModel = new makerjs.models.Text(textToSVG.font, inputText, getValue(argv.size, 100), true, false, undefined);
     const svg = makerjs.exporter.toSVG(textModel);
 
     const dom = new JSDOM(svg);
