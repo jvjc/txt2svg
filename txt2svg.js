@@ -35,7 +35,7 @@ if(!getValue(argv.text, false)) {
     return false;
 }
 
-let inputText = argv.text.replace(/[^a-zA-ZÀ-ú0-9 !?¿¡:)(;<=>]/gu, '');
+let inputText = argv.text.toString().replace(/[^a-zA-ZÀ-ú0-9 !?¿¡:)(;<=>]/gu, '');
 
 const font = mergedFonts[getValue(argv.font, 0)];
 if(!font) {
