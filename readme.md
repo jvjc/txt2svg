@@ -21,6 +21,5 @@ Argumento | Default
 -- | --
 text | **Requerido**
 font | 0
-size | 100
-fill | none
-stroke | black
+width | -
+height | -
