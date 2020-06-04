@@ -1,21 +1,129 @@
-#!/usr/bin/env node
-const argv = require('minimist')(process.argv.slice(2));
-const localFonts = require('./package.json').localFonts;
 const GetGoogleFonts = require('get-google-fonts');
+
+const packageJSON = require('./package.json');
+const availableEmojis = packageJSON.availableEmojis;
+const localFonts = packageJSON.localFonts;
+
 const availableFonts = require('./fonts.json');
-const TextToSVG = require('text-to-svg');
+const opentype = require('opentype.js');
 const makerjs = require('makerjs');
-const jsdom = require('jsdom');
-const { JSDOM } = jsdom;
+
+const pointValue = 2.8346456693;
 
 const mergedFonts = localFonts.concat(Object.keys(availableFonts));
 
-if(argv['available-fonts']) {
-    console.log(JSON.stringify(mergedFonts));
-    return;
+const getValue = (arg, defaultValue = false) => {
+    if(!arg || arg == 'false' || arg === true || arg < 0 || arg.toString().trim().length == 0) return defaultValue;
+    return arg;
 }
 
-if(argv['update-fonts']) {
+module.exports.getSVG = (t, f, w, h) => {
+    var start = new Date();
+    if(!getValue(t, false)) {
+        throw Error('text not defined');
+    }
+
+    const fontName = mergedFonts[getValue(f, 0)];
+    
+    if(!fontName) {
+        throw Error('not available font');
+    }
+    
+    
+    const emojis = opentype.loadSync(`${__dirname}/emojis/font.ttf`);
+    const font = opentype.loadSync(`${__dirname}/fonts/${fontName.replace(/ /g, '_')}.ttf`);
+    
+    let cleaned = [];
+    t.toString().trim().split('\n').forEach(line => {
+        let arrLine = [];
+        let text = '';
+        for (const symbol of line) {
+            if(symbol.length == 2) {
+                let emoji = symbol;
+                if(text) {
+                    arrLine.push(text);
+                }
+                if(emojis.charToGlyphIndex(symbol) > 0) {
+                    arrLine.push({ type: 'emoji', symbol });
+                }
+                text = '';
+            } else {
+                if(font.charToGlyphIndex(symbol) > 0) {
+                    text += symbol.replace(/[^a-zA-ZÀ-ú0-9 !?¿¡:)(;<=>]\\/gu, '');
+                }
+            }
+        }
+        if(text) {
+            arrLine.push(text);
+        }
+        if(arrLine.length > 0) {
+            cleaned.push(arrLine);
+        }
+    });
+    
+
+
+    var project = {
+        models: {}
+    };
+    
+    let originY = 0;
+
+    if(cleaned.length == 0) {
+        return makerjs.exporter.toSVG(project).replace(/vector-effect="non-scaling-stroke"/g, '');
+    }
+    
+    cleaned.reverse().forEach((line, i) => {
+        let originX = 0;
+        let currentModel = {
+            models: {}
+        };
+        line.forEach((item, j) => {
+            if(item.type == 'emoji') {
+                currentModel.models[`model_${j}`] = new makerjs.models.Text(emojis, item.symbol, 80, true, false);
+            } else {
+                currentModel.models[`model_${j}`] = new makerjs.models.Text(font, item, 80, true, false);
+            }
+            currentModel.models[`model_${j}`].origin = [originX, 0];
+            let width = makerjs.measure.modelExtents(currentModel.models[`model_${j}`]).width;
+            originX += width + 6;
+        });
+        
+        project.models[`model_${i}`] = currentModel;
+        project.models[`model_${i}`].origin = [0, originY];
+    
+        let bounds = makerjs.measure.modelExtents(currentModel);
+        originY += bounds.height + 5;
+    });
+    
+    const size = makerjs.measure.modelExtents(project);
+    if(getValue(w, false) || getValue(h, false)) {
+        let scale = 1;
+        if(getValue(w, false) && getValue(h, false)) {
+            // Both boundaries
+            if(size.width > size.height) {
+                scale = w * pointValue / size.width;
+            } else {
+                scale = h * pointValue / size.height;
+            }
+        } else if(getValue(w, false)) {
+            scale = w * pointValue / size.width;
+            // width boundary
+        } else {
+            scale = h * pointValue / size.height;
+            // height boundary
+        }
+        makerjs.model.scale(project, scale);
+    }
+    
+    return makerjs.exporter.toSVG(project).replace(/vector-effect="non-scaling-stroke"/g, '');
+}
+
+module.exports.availableFonts = () => {
+    return mergedFonts;
+}
+
+module.exports.updateFonts = () => {
     let ggf = new GetGoogleFonts({
         userAgent: 'Wget/1.18',
         template: '{_family}.{ext}'
@@ -25,75 +133,6 @@ if(argv['update-fonts']) {
     ]).then(() => {
         console.log('Fuentes obtenidas');
     }).catch((err) => {
-        console.error('Error al obtener las fuentes', err);
-    });
-    return;
-}
-
-if(!getValue(argv.text, false)) {
-    console.error('text not defined');
-    return false;
-}
-
-let inputText = argv.text.toString().replace(/[^a-zA-ZÀ-ú0-9 !?¿¡:)(;<=>]/gu, '');
-
-const font = mergedFonts[getValue(argv.font, 0)];
-if(!font) {
-    console.error('not available font');
-    return false;
-}
-TextToSVG.load(`${__dirname}/fonts/${font.replace(/ /g, '_')}.ttf`, function(err, textToSVG) {
-    if(err) {
-        console.error(err);
-        return false;
-    }
-    const attributes = {};
-
-    if(getValue(argv.fill)) {
-        attributes.fill = getValue(argv.fill, 'none');
-    }
-    if(getValue(argv.stroke)) {
-        attributes.stroke = getValue(argv.stroke, 'none');
-    }
-
-    if(argv['get-metrics']) {
-        const options = {
-            x: 0,
-            y: 0,
-            fontSize: getValue(argv.size, 100),
-            anchor: 'top',
-            attributes: attributes
-        };
-        console.log(JSON.stringify(textToSVG.getMetrics(inputText, options)));
-        return;
-    }
-
-    var textModel = new makerjs.models.Text(textToSVG.font, inputText, getValue(argv.size, 100), true, false, undefined);
-    const svg = makerjs.exporter.toSVG(textModel);
-
-    const dom = new JSDOM(svg);
-    const domSVG = dom.window.document.body.children[0];
-    const pointValue = 2.8346456693;
-    if(getValue(argv.width, false) || getValue(argv.height, false)) {
-        let width = domSVG.getAttribute('width');
-        let height = domSVG.getAttribute('height');
-
-        if(getValue(argv.width, false) && getValue(argv.height, false)) {
-            domSVG.setAttribute('width', argv.width * pointValue);
-            domSVG.setAttribute('height', argv.height * pointValue);
-            domSVG.setAttribute('preserveAspectRatio', 'none');
-        } else if(getValue(argv.width, false)) {
-            domSVG.setAttribute('width', argv.width * pointValue);
-            domSVG.setAttribute('height', (height * argv.width / width) * pointValue);
-        } else {
-            domSVG.setAttribute('width', (width * argv.height / height) * pointValue);
-            domSVG.setAttribute('height', argv.height * pointValue);
-        }
-    }
-    console.log(domSVG.outerHTML.replace(/vector-effect="non-scaling-stroke"/g, ''));
-});
-
-function getValue(arg, defaultValue = false) {
-    if(!arg || arg == 'false' || arg === true || arg < 0 || arg.toString().trim().length == 0) return defaultValue;
-    return arg;
+        throw Error('Error al obtener las fuentes', err.message);
+    })
 }

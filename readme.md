@@ -7,17 +7,18 @@ npm run update-fonts
 ```
 
 ### Uso
-- Basta con ejecutar
+- Ejecutar:
 ```bash
-node txt2svg.js --text "Texto ejemplo"
+node txt2svg.js --width 305 --height 305 --text $'Feliz\ncumpleaños\nmamá' --font 1
 ```
+- Cada salto de línea será una línea como tal en el svg
 
 ### Argumentos
 
 Argumento | Default
 -- | --
 text | **Requerido**
-font | Roboto
+font | 0
 size | 100
 fill | none
 stroke | black
