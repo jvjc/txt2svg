@@ -7,6 +7,6 @@ if(argv['available-fonts']) {
 } else if(argv['update-fonts']) {
     txt2svg.updateFonts();
 } else {
-    let rs = txt2svg.getSVG(argv.text, argv.font, argv.width, argv.height);
+    let rs = txt2svg.getSVG(argv.text, argv.font, argv.width, argv.height, argv['merge-path']);
     console.log(rs);
 }

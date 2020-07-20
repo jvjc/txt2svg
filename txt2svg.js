@@ -17,8 +17,7 @@ const getValue = (arg, defaultValue = false) => {
     return arg;
 }
 
-module.exports.getSVG = (t, f, w, h) => {
-    var start = new Date();
+module.exports.getSVG = (t, f, w, h, mP) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -28,7 +27,6 @@ module.exports.getSVG = (t, f, w, h) => {
     if(!fontName) {
         throw Error('not available font');
     }
-    
     
     const emojis = opentype.loadSync(`${__dirname}/emojis/font.ttf`);
     const font = opentype.loadSync(`${__dirname}/fonts/${fontName.replace(/ /g, '_')}.ttf`);
@@ -60,8 +58,6 @@ module.exports.getSVG = (t, f, w, h) => {
             cleaned.push(arrLine);
         }
     });
-    
-
 
     var project = {
         models: {}
@@ -80,9 +76,9 @@ module.exports.getSVG = (t, f, w, h) => {
         };
         line.forEach((item, j) => {
             if(item.type == 'emoji') {
-                currentModel.models[`model_${j}`] = new makerjs.models.Text(emojis, item.symbol, 80, true, false);
+                currentModel.models[`model_${j}`] = new makerjs.models.Text(emojis, item.symbol, 80, getValue(mP, false));
             } else {
-                currentModel.models[`model_${j}`] = new makerjs.models.Text(font, item, 80, true, false);
+                currentModel.models[`model_${j}`] = new makerjs.models.Text(font, item, 80, getValue(mP, false));
             }
             currentModel.models[`model_${j}`].origin = [originX, 0];
             let width = makerjs.measure.modelExtents(currentModel.models[`model_${j}`]).width;

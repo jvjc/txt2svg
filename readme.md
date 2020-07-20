@@ -23,3 +23,4 @@ text | **Requerido**
 font | 0
 width | -
 height | -
+merge-path | false
