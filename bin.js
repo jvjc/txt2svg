@@ -8,14 +8,14 @@ if(argv['available-fonts']) {
     txt2svg.getFont(argv['font-url']).then(fontHash => {
         let rs = txt2svg.getSVG(argv.text, fontHash, argv.width, argv.height, argv['merge-path']);
         if(argv.output === 'object') {
-            console.log({
+            console.log(JSON.stringify({
                 svg: rs,
                 font: {
                     name: argv['font-name'],
                     version: argv['font-version'],
                     url: argv['font-url']
                 }
-            });
+            }));
         } else {
             console.log(rs);
         }
