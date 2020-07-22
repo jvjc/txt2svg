@@ -3,9 +3,7 @@
   "version": "1.0.7",
   "description": "",
   "main": "txt2svg.js",
-  "scripts": {
-    "postinstall": "node txt2svg.js --update-fonts"
-  },
+  "scripts": {},
   "author": "Víctor Jiménez",
   "bin": {
     "txt2svg": "./bin.js"
@@ -13,15 +11,8 @@
   "preferGlobal": true,
   "license": "ISC",
   "dependencies": {
-    "get-google-fonts": "^1.2.2",
     "makerjs": "^0.17.0",
     "minimist": "^1.2.5",
     "opentype.js": "^1.3.3"
-  },
-  "localFonts": [
-    "The Horizontal"
-  ],
-  "availableEmojis": [
-    "😂", "😊"
-  ]
+  }
 }

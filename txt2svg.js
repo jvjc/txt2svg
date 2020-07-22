@@ -1,16 +1,9 @@
-const GetGoogleFonts = require('get-google-fonts');
-
-const packageJSON = require('./package.json');
-const availableEmojis = packageJSON.availableEmojis;
-const localFonts = packageJSON.localFonts;
-
-const availableFonts = require('./fonts.json');
 const opentype = require('opentype.js');
 const makerjs = require('makerjs');
+const https = require('https');
+const fs = require('fs');
 
 const pointValue = 2.8346456693;
-
-const mergedFonts = localFonts.concat(Object.keys(availableFonts));
 
 const getValue = (arg, defaultValue = false) => {
     if(!arg || arg == 'false' || arg === true || arg < 0 || arg.toString().trim().length == 0) return defaultValue;
@@ -21,15 +14,9 @@ module.exports.getSVG = (t, f, w, h, mP) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
-
-    const fontName = mergedFonts[getValue(f, 0)];
-    
-    if(!fontName) {
-        throw Error('not available font');
-    }
     
     const emojis = opentype.loadSync(`${__dirname}/emojis/font.ttf`);
-    const font = opentype.loadSync(`${__dirname}/fonts/${fontName.replace(/ /g, '_')}.ttf`);
+    const font = opentype.loadSync(`${__dirname}/fonts/${f}.ttf`);
     
     let cleaned = [];
     t.toString().trim().split('\n').forEach(line => {
@@ -119,16 +106,21 @@ module.exports.availableFonts = () => {
     return mergedFonts;
 }
 
-module.exports.updateFonts = () => {
-    let ggf = new GetGoogleFonts({
-        userAgent: 'Wget/1.18',
-        template: '{_family}.{ext}'
+module.exports.getFont = (url) => {
+    const fontName = url.split('/').pop();
+    return new Promise((resolve, reject) => {
+        fs.exists(`./fonts/${fontName}`, exists => {
+            const hash = fontName.slice(0, -4);
+            if(exists) {
+                resolve(hash);
+            } else {
+                const file = fs.createWriteStream(`./fonts/${fontName}`);
+                https.get(url, response => {
+                    response.pipe(file).on('finish', () => {
+                        resolve(hash);
+                    });
+                });
+            }
+        });
     });
-    ggf.download([
-        availableFonts
-    ]).then(() => {
-        console.log('Fuentes obtenidas');
-    }).catch((err) => {
-        throw Error('Error al obtener las fuentes', err.message);
-    })
 }
