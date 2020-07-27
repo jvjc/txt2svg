@@ -2,6 +2,7 @@ const opentype = require('opentype.js');
 const makerjs = require('makerjs');
 const https = require('https');
 const fs = require('fs');
+const { RSA_NO_PADDING } = require('constants');
 
 const pointValue = 2.8346456693;
 
@@ -103,11 +104,28 @@ module.exports.getSVG = (t, f, w, h, mP) => {
 }
 
 module.exports.availableFonts = () => {
-    return mergedFonts;
+    let contentFile = getMetadataContent();
+    let fonts = {};
+    Object.keys(contentFile).forEach(fontName => {
+        fonts[fontName] = Object.keys(contentFile[fontName].versions);
+    });
+
+    return fonts;
 }
 
-module.exports.getFont = (url) => {
-    const fontName = url.split('/').pop();
+module.exports.getFont = (url, name, version) => {
+    let fontName;
+    if(url) {
+        fontName = url.split('/').pop();
+    } else {
+        let contentFile = getMetadataContent();
+        if(contentFile[name] && contentFile[name].versions[version]) {
+            fontName = contentFile[name].versions[version] + '.ttf';
+        } else {
+            throw Error('font not found');
+        }
+    }
+
     return new Promise((resolve, reject) => {
         if (!fs.existsSync(`${__dirname}/fonts`)){
             fs.mkdirSync(`${__dirname}/fonts`);
@@ -115,15 +133,42 @@ module.exports.getFont = (url) => {
         fs.exists(`${__dirname}/fonts/${fontName}`, exists => {
             const hash = fontName.slice(0, -4);
             if(exists) {
+                saveFont(hash, name, version);
                 resolve(hash);
             } else {
                 const file = fs.createWriteStream(`${__dirname}/fonts/${fontName}`);
-                https.get(url, response => {
-                    response.pipe(file).on('finish', () => {
-                        resolve(hash);
+                if(url) {
+                    https.get(url, response => {
+                        response.pipe(file).on('finish', () => {
+                            saveFont(hash, name, version);
+                            resolve(hash);
+                        });
                     });
-                });
+                } else {
+                    reject('url not provided');
+                }
             }
         });
     });
+}
+
+const saveFont = (hash, name, version) => {
+    let contentFile = getMetadataContent();
+    if(!contentFile[name]) {
+        contentFile[name] = {
+            versions: {}
+        };
+    }
+
+    contentFile[name].versions[version] = hash;
+
+    fs.writeFileSync(`${__dirname}/fonts/metadata.json`, JSON.stringify(contentFile), 'utf-8');
+}
+
+const getMetadataContent = () => {
+    let contentFile = {};
+    if (fs.existsSync(`${__dirname}/fonts/metadata.json`)) {
+        contentFile = require(`${__dirname}/fonts/metadata.json`);
+    }
+    return contentFile;
 }
