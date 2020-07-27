@@ -109,15 +109,15 @@ module.exports.availableFonts = () => {
 module.exports.getFont = (url) => {
     const fontName = url.split('/').pop();
     return new Promise((resolve, reject) => {
-        if (!fs.existsSync('./fonts')){
-            fs.mkdirSync('./fonts');
+        if (!fs.existsSync(`${__dirname}/fonts`)){
+            fs.mkdirSync(`${__dirname}/fonts`);
         }
-        fs.exists(`./fonts/${fontName}`, exists => {
+        fs.exists(`${__dirname}/fonts/${fontName}`, exists => {
             const hash = fontName.slice(0, -4);
             if(exists) {
                 resolve(hash);
             } else {
-                const file = fs.createWriteStream(`./fonts/${fontName}`);
+                const file = fs.createWriteStream(`${__dirname}/fonts/${fontName}`);
                 https.get(url, response => {
                     response.pipe(file).on('finish', () => {
                         resolve(hash);
