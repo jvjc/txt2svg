@@ -26,4 +26,5 @@ font-version | -
 output | svg | svg \| object
 width | -
 height | -
+font-height | 50
 merge-path | false | true \| false
