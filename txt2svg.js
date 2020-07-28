@@ -2,14 +2,69 @@ const opentype = require('opentype.js');
 const makerjs = require('makerjs');
 const https = require('https');
 const fs = require('fs');
-const { RSA_NO_PADDING } = require('constants');
 
 const pointValue = 2.8346456693;
-const pixelValue = 3.7795275591;
 
 const getValue = (arg, defaultValue = false) => {
     if(!arg || arg == 'false' || arg === true || arg < 0 || arg.toString().trim().length == 0) return defaultValue;
     return arg;
+}
+
+const getModelInfo = (font, fontSize, text, mergePaths) => {
+    let model = new makerjs.models.Text(font, text, fontSize, mergePaths);
+    let measure = makerjs.measure.modelExtents(model);
+    let width = measure.low[0] < 0 ? measure.width : measure.high[0];
+    return {
+        model,
+        measure,
+        width
+    }
+}
+
+const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
+    let initialModelInfo = getModelInfo(font, fontSize, text, mergePaths);
+    let returnModel = initialModelInfo.model;
+
+    let newLength = Math.floor(text.length * maxWidth / initialModelInfo.width);
+
+    if (initialModelInfo.width > maxWidth) {
+        let direction = 0;
+        while(true) {
+            if(newLength > text.length) break;
+            newText = text.substr(0, newLength);
+            
+            let currentModelInfo = getModelInfo(font, fontSize, newText, mergePaths);
+            
+            if(direction == 0) {
+                if(currentModelInfo.width < maxWidth) {
+                    direction = 1;
+                }
+                if(currentModelInfo.width > maxWidth) {
+                    direction = -1;
+                }
+            }
+
+            if(direction == -1) {
+                if(currentModelInfo.width < maxWidth) {
+                    returnModel = currentModelInfo.model;
+                    break;
+                }
+            } else {
+                if(currentModelInfo.width > maxWidth) {
+                    newLength--;
+                    break;
+                }
+            }
+
+            returnModel = currentModelInfo.model;
+            newLength += direction;
+        };
+    }
+
+    return {
+        remaining: text.substr(newLength),
+        model: returnModel
+    }
 }
 
 module.exports.getSVG = (t, f, w, h, fH, mP) => {
@@ -21,7 +76,7 @@ module.exports.getSVG = (t, f, w, h, fH, mP) => {
     
     let cleaned = [];
     t.toString().trim().split('').forEach(char => {
-        if(char.trim() && font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ú0-9 !?¿¡:)(;<=>]/gu.test(char)) {
+        if(font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ú0-9 !?¿¡:)(;<=>]/gu.test(char)) {
             cleaned.push(char);
         }
     });
@@ -35,39 +90,23 @@ module.exports.getSVG = (t, f, w, h, fH, mP) => {
     }
 
     let fontSize = fH * pointValue;
-    
-    let originX = 0;
+
     let originY = 0;
-    let maxY = 0;
-    let maxWidth = getValue(w, Infinity) * pixelValue;
+    let maxWidth = (getValue(w, Infinity) - 0.5) * pointValue;
 
-    cleaned.forEach((letter, i) => {
-        let model = new makerjs.models.Text(font, letter, fontSize, getValue(mP, false));
-        let measure = makerjs.measure.modelExtents(model);
-        
-        project.models[`model_${i}`] = model;
+    let numLine = 0;
+    var text = cleaned.join('');
 
-        maxY = measure.height > maxY ? measure.height : maxY;
+    do {
+        var lineModel = getLineModel(font, fontSize, text, maxWidth, getValue(mP, false));
+        lineModel.model.origin = [0, originY];
+        project.models[`model_${numLine++}`] = lineModel.model;
+        text = lineModel.remaining.trim();
 
-        if(originX + measure.high[0] > maxWidth) {
-            originY -= maxY;
-            maxY = 0;
-            originX = 0;
-        }
-
-        project.models[`model_${i}`].origin = [originX, originY];
-
-        originX += measure.high[0];
-        
-        let width = measure.high[0];
-        /*
-        project.models[`model_${i}`] = currentModel;
-        project.models[`model_${i}`].origin = [0, originY]; */
+        let measure = makerjs.measure.modelExtents(lineModel.model);
+        originY -= measure.height;
+    } while (text.length > 0);
     
-        /* let bounds = makerjs.measure.modelExtents(currentModel);
-        originY += bounds.height + 5; */
-    });
-
     return makerjs.exporter.toSVG(project).replace(/vector-effect="non-scaling-stroke"/g, '');
 }
 

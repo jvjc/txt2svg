@@ -21,9 +21,9 @@ if(argv['available-fonts']) {
                 console.log(rs);
             }
         }).catch(error => {
-            throw Error(error.message);
+            console.error(error);
         });
     } else {
-        throw Error('font-name or font-versión not defined');
+        console.error('font-name or font-versión not defined');
     }
 }
