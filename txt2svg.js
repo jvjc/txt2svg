@@ -75,8 +75,8 @@ module.exports.getSVG = (t, f, w, h, fH, mP) => {
     const font = opentype.loadSync(`${__dirname}/fonts/${f}.ttf`);
     
     let cleaned = [];
-    t.toString().trim().split('').forEach(char => {
-        if(font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ú0-9 !?¿¡:)(;<=>]/gu.test(char)) {
+    t.toString().trim().replace(/\n/g, ' ').replace(/\s+/g, ' ').split('').forEach(char => {
+        if(font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ú0-9 !?¿¡:)\-(;<=>]/gu.test(char)) {
             cleaned.push(char);
         }
     });
