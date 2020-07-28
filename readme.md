@@ -20,9 +20,9 @@ txt2svg --width 305 --height 305 --text $'Feliz\ncumpleaños\nmamá' --font-url 
 Argumento | Default | Opciones
 -- | -- | --
 text | **Requerido**
-font-url | **Requerido**
-font-name | -
-font-version | -
+font-name | **Requerido**
+font-version | **Requerido**
+font-url | -
 output | svg | svg \| object
 width | -
 height | -
