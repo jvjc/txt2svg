@@ -27,4 +27,5 @@ output | svg | svg \| object
 width | -
 height | -
 font-height | 50
+line-spacing | 2
 merge-path | false | true \| false

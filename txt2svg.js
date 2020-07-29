@@ -2,6 +2,9 @@ const opentype = require('opentype.js');
 const makerjs = require('makerjs');
 const https = require('https');
 const fs = require('fs');
+const home = require('os').homedir();
+const projectFolder = `${home}/.txt2svg`;
+const fontsFolder = `${projectFolder}/fonts`;
 
 const pointValue = 2.8346456693;
 
@@ -67,12 +70,12 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, mP) => {
+module.exports.getSVG = (t, f, w, h, fH, ls, mP) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
     
-    const font = opentype.loadSync(`${__dirname}/fonts/${f}.ttf`);
+    const font = opentype.loadSync(`${fontsFolder}/${f}.ttf`);
     
     let cleaned = [];
     t.toString().trim().replace(/\n/g, ' ').replace(/\s+/g, ' ').split('').forEach(char => {
@@ -104,7 +107,7 @@ module.exports.getSVG = (t, f, w, h, fH, mP) => {
         text = lineModel.remaining.trim();
 
         let measure = makerjs.measure.modelExtents(lineModel.model);
-        originY -= measure.height;
+        originY -= (measure.height + ls * pointValue);
     } while (text.length > 0);
     
     return makerjs.exporter.toSVG(project).replace(/vector-effect="non-scaling-stroke"/g, '');
@@ -134,16 +137,19 @@ module.exports.getFont = (url, name, version) => {
     }
 
     return new Promise((resolve, reject) => {
-        if (!fs.existsSync(`${__dirname}/fonts`)){
-            fs.mkdirSync(`${__dirname}/fonts`);
+        if (!fs.existsSync(projectFolder)){
+            fs.mkdirSync(projectFolder);
         }
-        fs.exists(`${__dirname}/fonts/${fontName}`, exists => {
+        if (!fs.existsSync(fontsFolder)){
+            fs.mkdirSync(fontsFolder);
+        }
+        fs.exists(`${fontsFolder}/${fontName}`, exists => {
             const hash = fontName.slice(0, -4);
             if(exists) {
                 saveFont(hash, name, version);
                 resolve(hash);
             } else {
-                const file = fs.createWriteStream(`${__dirname}/fonts/${fontName}`);
+                const file = fs.createWriteStream(`${fontsFolder}/${fontName}`);
                 if(url) {
                     https.get(url, response => {
                         response.pipe(file).on('finish', () => {
@@ -169,13 +175,13 @@ const saveFont = (hash, name, version) => {
 
     contentFile[name].versions[version] = hash;
 
-    fs.writeFileSync(`${__dirname}/fonts/metadata.json`, JSON.stringify(contentFile), 'utf-8');
+    fs.writeFileSync(`${fontsFolder}/metadata.json`, JSON.stringify(contentFile), 'utf-8');
 }
 
 const getMetadataContent = () => {
     let contentFile = {};
-    if (fs.existsSync(`${__dirname}/fonts/metadata.json`)) {
-        contentFile = require(`${__dirname}/fonts/metadata.json`);
+    if (fs.existsSync(`${fontsFolder}/metadata.json`)) {
+        contentFile = require(`${fontsFolder}/metadata.json`);
     }
     return contentFile;
 }
