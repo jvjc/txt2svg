@@ -2,6 +2,7 @@ const opentype = require('opentype.js');
 const makerjs = require('makerjs');
 const https = require('https');
 const fs = require('fs');
+const { point } = require('makerjs');
 const home = require('os').homedir();
 const projectFolder = `${home}/.txt2svg`;
 const fontsFolder = `${projectFolder}/fonts`;
@@ -70,7 +71,7 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, ls, mP) => {
+module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -78,8 +79,12 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP) => {
     const font = opentype.loadSync(`${fontsFolder}/${f}.ttf`);
     
     let cleaned = [];
-    t.toString().trim().replace(/\n/g, ' ').replace(/\s+/g, ' ').split('').forEach(char => {
-        if(font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ú0-9 !?¿¡:)\-(;<=>]/gu.test(char)) {
+    t = t.toString().trim();
+    if(!aLB) {
+        t = t.replace(/\n/g, ' ');
+    }
+    t.replace(/ +/g, ' ').split('').forEach(char => {
+        if((font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ú0-9 !?¿¡:)\-(;<=>\\]/gu.test(char)) || char === '\n') {
             cleaned.push(char);
         }
     });
@@ -95,22 +100,49 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP) => {
     let fontSize = fH * pointValue;
 
     let originY = 0;
+    let originHigh;
+    let originLow = Infinity;
+    let maxLow = Infinity;
     let maxWidth = (getValue(w, Infinity) - 0.5) * pointValue;
+    let maxHeight = (getValue(h, Infinity) - 0.5) * pointValue;
 
     let numLine = 0;
-    var text = cleaned.join('');
 
-    do {
-        var lineModel = getLineModel(font, fontSize, text, maxWidth, getValue(mP, false));
-        lineModel.model.origin = [0, originY];
-        project.models[`model_${numLine++}`] = lineModel.model;
-        text = lineModel.remaining.trim();
+    cleaned.join('').split('\n').forEach(text => {
+        do {
+            var lineModel = getLineModel(font, fontSize, text, maxWidth, getValue(mP, false));
+            lineModel.model.origin = [0, originY];
+            project.models[`model_${numLine++}`] = lineModel.model;
+            let measure = makerjs.measure.modelExtents(lineModel.model);
+            if(!originHigh) {
+                originHigh = measure.high[1];
+            }
+            if(measure.low[0] < originLow) {
+                originLow = measure.low[0];
+            }
 
-        let measure = makerjs.measure.modelExtents(lineModel.model);
-        originY -= (measure.height + ls * pointValue);
-    } while (text.length > 0);
+            if(measure.low[1] < maxLow) {
+                maxLow = measure.low[1];
+            }
+
+            text = lineModel.remaining.trim();
+            originY -= (measure.height + ls * pointValue);
+        } while (text.length > 0);
+    });
+
+    if(maxLow < -maxHeight + originHigh && w && h) {
+        project.models['boundaries'] = new makerjs.models.Rectangle(getValue(w) * pointValue, -getValue(h) * pointValue);
+        project.models['boundaries'].layer = 'boundaries';
+        project.models['boundaries'].origin = [originLow, originHigh];
+    }
     
-    return makerjs.exporter.toSVG(project).replace(/vector-effect="non-scaling-stroke"/g, '');
+    return makerjs.exporter.toSVG(project, {
+        layerOptions: {
+            boundaries: {
+                stroke: 'red'
+            }
+        }
+    }).replace(/vector-effect="non-scaling-stroke"/g, '');
 }
 
 module.exports.availableFonts = () => {

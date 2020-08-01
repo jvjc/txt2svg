@@ -29,3 +29,4 @@ height | -
 font-height | 50
 line-spacing | 2
 merge-path | false | true \| false
+allow-line-break | presente o no
