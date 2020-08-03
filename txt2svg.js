@@ -71,7 +71,7 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB) => {
+module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -80,10 +80,13 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB) => {
     
     let cleaned = [];
     t = t.toString().trim();
-    if(!aLB) {
-        t = t.replace(/\n/g, ' ');
+    if(!naa) {
+        if(!aLB) {
+            t = t.replace(/\n/g, ' ');
+        }
+        t = t.replace(/ +/g, ' ');
     }
-    t.replace(/ +/g, ' ').split('').forEach(char => {
+    t.split('').forEach(char => {
         if((font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ú0-9 !?¿¡:)\-(;<=>\\]/gu.test(char)) || char === '\n') {
             cleaned.push(char);
         }
@@ -110,7 +113,7 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB) => {
 
     cleaned.join('').split('\n').forEach(text => {
         do {
-            var lineModel = getLineModel(font, fontSize, text, maxWidth, getValue(mP, false));
+            var lineModel = getLineModel(font, fontSize, text, naa ? Infinity : maxWidth, getValue(mP, false));
             lineModel.model.origin = [0, originY];
             project.models[`model_${numLine++}`] = lineModel.model;
             let measure = makerjs.measure.modelExtents(lineModel.model);

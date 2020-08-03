@@ -7,7 +7,7 @@ if(argv['available-fonts']) {
 } else {
     if(argv['font-name'] && argv['font-version']) {
         txt2svg.getFont(argv['font-url'], argv['font-name'], argv['font-version']).then(fontHash => {
-            let rs = txt2svg.getSVG(argv.text, fontHash, argv.width, argv.height, argv['font-height'] || 50, argv['line-spacing'] || 2, argv['merge-path'], typeof argv['allow-line-break'] !== 'undefined');
+            let rs = txt2svg.getSVG(argv.text, fontHash, argv.width, argv.height, argv['font-height'] || 50, argv['line-spacing'] || 2, argv['merge-path'], typeof argv['allow-line-break'] !== 'undefined', argv['auto-adjust'] == 'false' || argv['auto-adjust'] == 0);
             if(argv.output === 'object') {
                 console.log(JSON.stringify({
                     svg: rs,
