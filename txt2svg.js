@@ -71,7 +71,7 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa) => {
+module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa, cap) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -106,6 +106,7 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa) => {
     let originHigh;
     let originLow = Infinity;
     let maxLow = Infinity;
+    let maxHigh = -Infinity;
     let maxWidth = (getValue(w, Infinity) - 0.5) * pointValue;
     let maxHeight = (getValue(h, Infinity) - 0.5) * pointValue;
 
@@ -128,12 +129,19 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa) => {
                 maxLow = measure.low[1];
             }
 
+            let width = measure.low[0] < 0 ? measure.width : measure.high[0];
+            if(width > maxHigh) {
+                maxHigh = width;
+            }
+
             text = lineModel.remaining.trim();
             originY -= (measure.height + ls * pointValue);
         } while (text.length > 0);
     });
 
-    if(maxLow < -maxHeight + originHigh && w && h) {
+    let outOfBox = (maxLow < -maxHeight + originHigh || maxHigh > maxWidth) && w && h;
+
+    if(outOfBox || cap) {
         project.models['boundaries'] = new makerjs.models.Rectangle(getValue(w) * pointValue, -getValue(h) * pointValue);
         project.models['boundaries'].layer = 'boundaries';
         project.models['boundaries'].origin = [originLow, originHigh];
@@ -142,7 +150,7 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa) => {
     return makerjs.exporter.toSVG(project, {
         layerOptions: {
             boundaries: {
-                stroke: 'red'
+                stroke: outOfBox ? 'red' : 'blue'
             }
         }
     }).replace(/vector-effect="non-scaling-stroke"/g, '');
