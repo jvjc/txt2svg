@@ -31,3 +31,4 @@ line-spacing | 2
 merge-path | false | true \| false
 allow-line-break | presente o no
 auto-adjust | true | true \| false
+cut-area-preview | false | true \| false
