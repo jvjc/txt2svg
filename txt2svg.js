@@ -9,6 +9,8 @@ const fontsFolder = `${projectFolder}/fonts`;
 
 const pointValue = 2.8346456693;
 
+const cutAreaPadding = 5 * pointValue;
+
 const getValue = (arg, defaultValue = false) => {
     if(!arg || arg == 'false' || arg === true || arg < 0 || arg.toString().trim().length == 0) return defaultValue;
     return arg;
@@ -71,7 +73,7 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa, cap) => {
+module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -80,7 +82,7 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa, cap) => {
     
     let cleaned = [];
     t = t.toString().trim();
-    if(!naa) {
+    if(aa) {
         if(!aLB) {
             t = t.replace(/\n/g, ' ');
         }
@@ -114,7 +116,7 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa, cap) => {
 
     cleaned.join('').split('\n').forEach(text => {
         do {
-            var lineModel = getLineModel(font, fontSize, text, naa ? Infinity : maxWidth, getValue(mP, false));
+            var lineModel = getLineModel(font, fontSize, text, aa ? maxWidth : Infinity, getValue(mP, false));
             lineModel.model.origin = [0, originY];
             project.models[`model_${numLine++}`] = lineModel.model;
             let measure = makerjs.measure.modelExtents(lineModel.model);
@@ -142,15 +144,18 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, naa, cap) => {
     let outOfBox = (maxLow < -maxHeight + originHigh || maxHigh > maxWidth) && w && h;
 
     if(outOfBox || cap) {
-        project.models['boundaries'] = new makerjs.models.Rectangle(getValue(w) * pointValue, -getValue(h) * pointValue);
+        let cutAreaWidth = getValue(w) * pointValue;
+        let cutAreaHeight = -getValue(h) * pointValue;
+        project.models['boundaries'] = new makerjs.models.Rectangle(cutAreaWidth + cutAreaPadding * 2, cutAreaHeight - cutAreaPadding * 2);
         project.models['boundaries'].layer = 'boundaries';
-        project.models['boundaries'].origin = [originLow, originHigh];
+        project.models['boundaries'].origin = [originLow - cutAreaPadding, originHigh + cutAreaPadding];
     }
     
     return makerjs.exporter.toSVG(project, {
         layerOptions: {
             boundaries: {
-                stroke: outOfBox ? 'red' : 'blue'
+                stroke: outOfBox ? 'red' : 'blue',
+                strokeWidth: 4
             }
         }
     }).replace(/vector-effect="non-scaling-stroke"/g, '');
