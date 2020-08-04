@@ -1,6 +1,6 @@
 {
   "name": "txt2svg",
-  "version": "1.0.11",
+  "version": "1.0.12",
   "description": "",
   "main": "txt2svg.js",
   "scripts": {},
