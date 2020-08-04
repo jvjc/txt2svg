@@ -18,6 +18,7 @@ if(argv['available-fonts']) {
                 argv['allow-line-break'] == 'true' || argv['allow-line-break'] == 1,
                 argv['auto-adjust'] == 'true' || argv['auto-adjust'] == 1,
                 argv['cut-area-preview'] == 'true' || argv['cut-area-preview'] == 1,
+                argv['hide-surrounding-box'] == 'true' || argv['hide-surrounding-box'] == 1
             );
             if(argv.output === 'object') {
                 console.log(JSON.stringify({

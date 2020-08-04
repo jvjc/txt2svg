@@ -32,3 +32,4 @@ merge-path | false | true \| false
 allow-line-break | presente o no
 auto-adjust | false | true \| false
 cut-area-preview | false | true \| false
+hide-surrounding-box | false | true \| false

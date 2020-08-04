@@ -73,7 +73,7 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap) => {
+module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -142,23 +142,28 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap) => {
     });
 
     let outOfBox = (maxLow < -maxHeight + originHigh || maxHigh > maxWidth) && w && h;
+    let SVGoptions;
 
-    if(outOfBox || cap) {
-        let cutAreaWidth = getValue(w) * pointValue;
-        let cutAreaHeight = -getValue(h) * pointValue;
-        project.models['boundaries'] = new makerjs.models.Rectangle(cutAreaWidth + cutAreaPadding * 2, cutAreaHeight - cutAreaPadding * 2);
-        project.models['boundaries'].layer = 'boundaries';
-        project.models['boundaries'].origin = [originLow - cutAreaPadding, originHigh + cutAreaPadding];
+    if(!nsb) {
+        if(outOfBox || cap) {
+            let cutAreaWidth = getValue(w) * pointValue;
+            let cutAreaHeight = -getValue(h) * pointValue;
+            project.models['boundaries'] = new makerjs.models.Rectangle(cutAreaWidth + cutAreaPadding * 2, cutAreaHeight - cutAreaPadding * 2);
+            project.models['boundaries'].layer = 'boundaries';
+            project.models['boundaries'].origin = [originLow - cutAreaPadding, originHigh + cutAreaPadding];
+
+            SVGoptions = {
+                layerOptions: {
+                    boundaries: {
+                        stroke: outOfBox ? 'red' : 'blue',
+                        strokeWidth: 4
+                    }
+                }
+            };
+        }
     }
     
-    return makerjs.exporter.toSVG(project, {
-        layerOptions: {
-            boundaries: {
-                stroke: outOfBox ? 'red' : 'blue',
-                strokeWidth: 4
-            }
-        }
-    }).replace(/vector-effect="non-scaling-stroke"/g, '');
+    return makerjs.exporter.toSVG(project, SVGoptions).replace(/vector-effect="non-scaling-stroke"/g, '');
 }
 
 module.exports.availableFonts = () => {
