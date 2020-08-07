@@ -2,11 +2,13 @@
 const argv = require('minimist')(process.argv.slice(2));
 const txt2svg = require('./txt2svg');
 
-if(argv['available-fonts']) {
+if(argv['clear-fonts']) {
+    txt2svg.clearFonts(argv['font-name'], argv['font-version']);
+} else if(argv['available-fonts']) {
     console.log(JSON.stringify(txt2svg.availableFonts()));
 } else {
     if(argv['font-name'] && argv['font-version']) {
-        txt2svg.getFont(argv['font-url'], argv['font-name'], argv['font-version']).then(fontHash => {
+        txt2svg.getFont(argv['font-url'], argv['font-name'], argv['font-version'], argv['font-caching'] == 'true' || argv['font-caching'] == 1).then(fontHash => {
             let rs = txt2svg.getSVG(
                 argv.text,
                 fontHash,

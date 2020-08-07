@@ -2,6 +2,7 @@ const opentype = require('opentype.js');
 const makerjs = require('makerjs');
 const https = require('https');
 const fs = require('fs');
+const path = require('path');
 const { point } = require('makerjs');
 const home = require('os').homedir();
 const projectFolder = `${home}/.txt2svg`;
@@ -73,7 +74,7 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb) => {
+module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, fC) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -176,7 +177,43 @@ module.exports.availableFonts = () => {
     return fonts;
 }
 
-module.exports.getFont = (url, name, version) => {
+module.exports.clearFonts = (name, version) => {
+    let contentFile = getMetadataContent();
+    if(name && version) {
+        if(contentFile[name] && contentFile[name].versions[version]) {
+            if(fs.existsSync(`${fontsFolder}/${contentFile[name].versions[version]}.ttf`)) {
+                fs.unlinkSync(`${fontsFolder}/${contentFile[name].versions[version]}.ttf`);
+            }
+            delete contentFile[name].versions[version];
+            if(Object.keys(contentFile[name].versions).length === 0) {
+                delete contentFile[name];
+            }
+        }
+    } else if (name) {
+        if(contentFile[name]) {
+            Object.keys(contentFile[name].versions).forEach(function (version) {
+                if(fs.existsSync(`${fontsFolder}/${contentFile[name].versions[version]}.ttf`)) {
+                    fs.unlinkSync(`${fontsFolder}/${contentFile[name].versions[version]}.ttf`);
+                }
+                delete contentFile[name].versions[version];
+            });
+            delete contentFile[name];
+        }
+    } else {
+        contentFile = {};
+        fs.readdir(fontsFolder, (err, files) => {
+            if (err) throw err;
+            for (const file of files) {
+                if(file !== 'metadata.json') {
+                    fs.unlinkSync(path.join(fontsFolder, file));
+                }
+            }
+        });
+    }
+    fs.writeFileSync(`${fontsFolder}/metadata.json`, JSON.stringify(contentFile), 'utf-8');
+}
+
+module.exports.getFont = (url, name, version, cache) => {
     let fontName;
     if(url) {
         fontName = url.split('/').pop();
@@ -198,17 +235,14 @@ module.exports.getFont = (url, name, version) => {
         }
         fs.exists(`${fontsFolder}/${fontName}`, exists => {
             const hash = fontName.slice(0, -4);
-            if(exists) {
-                saveFont(hash, name, version);
+            if(exists && cache) {
+                updateMetadata(hash, name, version);
                 resolve(hash);
             } else {
-                const file = fs.createWriteStream(`${fontsFolder}/${fontName}`);
                 if(url) {
-                    https.get(url, response => {
-                        response.pipe(file).on('finish', () => {
-                            saveFont(hash, name, version);
-                            resolve(hash);
-                        });
+                    downloadFile(`${fontsFolder}/${fontName}`, url, () => {
+                        updateMetadata(hash, name, version);
+                        resolve(hash);
                     });
                 } else {
                     reject('url not provided');
@@ -218,7 +252,16 @@ module.exports.getFont = (url, name, version) => {
     });
 }
 
-const saveFont = (hash, name, version) => {
+const downloadFile = (path, url, cb) => {
+    const file = fs.createWriteStream(path);
+    https.get(url, response => {
+        response.pipe(file).on('finish', () => {
+            cb();
+        });
+    });
+}
+
+const updateMetadata = (hash, name, version) => {
     let contentFile = getMetadataContent();
     if(!contentFile[name]) {
         contentFile[name] = {
