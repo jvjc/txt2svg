@@ -3,7 +3,7 @@ const makerjs = require('makerjs');
 const https = require('https');
 const fs = require('fs');
 const path = require('path');
-const { point } = require('makerjs');
+const crypto = require('crypto');
 const home = require('os').homedir();
 const projectFolder = `${home}/.txt2svg`;
 const fontsFolder = `${projectFolder}/fonts`;
@@ -240,9 +240,13 @@ module.exports.getFont = (url, name, version, cache) => {
                 resolve(hash);
             } else {
                 if(url) {
-                    downloadFile(`${fontsFolder}/${fontName}`, url, () => {
-                        updateMetadata(hash, name, version);
-                        resolve(hash);
+                    downloadFont(`${fontsFolder}/${fontName}`, url, (error) => {
+                        if(error) {
+                            reject('failed to download font');
+                        } else {
+                            updateMetadata(hash, name, version);
+                            resolve(hash);
+                        }
                     });
                 } else {
                     reject('url not provided');
@@ -252,11 +256,56 @@ module.exports.getFont = (url, name, version, cache) => {
     });
 }
 
+var maxTries = 0;
+const downloadFont = (fontPath, url, cb) => {
+    if(maxTries++ < 3) {
+        downloadFile(fontPath, url, error => {
+            if(error) {
+                downloadFont(fontPath, url, cb);
+            } else {
+                cb();
+            }
+        });
+    } else {
+        cb(true);
+    }
+}
+
+const getChecksum = filePath => {
+    const fileContent = fs.readFileSync(filePath);
+    return crypto.createHash('sha1').update(fileContent).digest('hex');
+}
+
+const verifyChecksum = (verificationURL, file, cb) => {
+    const checksum = getChecksum(file);
+    https.get(verificationURL, response => {
+        let data = '';
+        response.on('data', chunk => {
+            data += chunk;
+        });
+
+        response.on('end', () => {
+            if(checksum === data.trim()) {
+                cb(true);
+            } else {
+                cb(false);
+            }
+        })
+    });
+}
+
 const downloadFile = (path, url, cb) => {
     const file = fs.createWriteStream(path);
     https.get(url, response => {
         response.pipe(file).on('finish', () => {
-            cb();
+            verifyChecksum(url.slice(0, -3) + 'sha1', path, valid => {
+                if(!valid) {
+                    if(fs.existsSync(path)) {
+                        fs.unlinkSync(path);
+                    }
+                }
+                cb(!valid);
+            });
         });
     });
 }
