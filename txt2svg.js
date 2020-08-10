@@ -90,7 +90,7 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, fC) => {
         t = t.replace(/ +/g, ' ');
     }
     t.split('').forEach(char => {
-        if((font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ÿ0-9 !?¿¡:)\-(;<=>\\]/gu.test(char)) || char === '\n') {
+        if((font.charToGlyphIndex(char) > 0 && /[a-zA-ZÀ-ÿ0-9 !?¿¡:)\.\-,(;<=>\\]/gu.test(char)) || char === '\n') {
             cleaned.push(char);
         }
     });
