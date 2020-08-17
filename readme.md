@@ -25,6 +25,8 @@ auto-adjust | false | true \| false
 cut-area-preview | false | true \| false
 hide-surrounding-box | false | true \| false
 font-caching | false | true \| false
+order-id | -
+cut-box | false | true \| false
 
 ### Otros métodos
 - Ver fuentes y versiones disponibles:

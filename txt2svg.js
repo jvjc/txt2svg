@@ -74,7 +74,7 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, fC) => {
+module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -141,6 +141,20 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, fC) => {
             originY -= (measure.height + ls * pointValue);
         } while (text.length > 0);
     });
+
+    if(oID) {
+        const fontNumber = opentype.loadSync(`${__dirname}/Nova.ttf`);
+        const orderNumberModelInfo = getModelInfo(fontNumber, 10 * pointValue, oID.toString());
+        project.models[`model_order`] = orderNumberModelInfo.model;
+        project.models['model_order'].origin = [0, originHigh];
+        let measureNumber = makerjs.measure.modelExtents(orderNumberModelInfo.model);
+        originHigh = measureNumber.high[1];
+    }
+
+    if(cbox) {
+        project.models['model_cut_area'] = new makerjs.models.Rectangle(maxHigh + cutAreaPadding * 2, - originHigh + maxLow - cutAreaPadding * 2);
+        project.models['model_cut_area'].origin = [-cutAreaPadding, originHigh + cutAreaPadding];
+    }
 
     let outOfBox = (maxLow < -maxHeight + originHigh || maxHigh > maxWidth) && w && h;
     let SVGoptions;

@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 const argv = require('minimist')(process.argv.slice(2));
 const txt2svg = require('./txt2svg');
-
 if(argv['clear-fonts']) {
     txt2svg.clearFonts(argv['font-name'], argv['font-version']);
 } else if(argv['available-fonts']) {
@@ -20,7 +19,9 @@ if(argv['clear-fonts']) {
                 argv['allow-line-break'] == 'true' || argv['allow-line-break'] == 1,
                 argv['auto-adjust'] == 'true' || argv['auto-adjust'] == 1,
                 argv['cut-area-preview'] == 'true' || argv['cut-area-preview'] == 1,
-                argv['hide-surrounding-box'] == 'true' || argv['hide-surrounding-box'] == 1
+                argv['hide-surrounding-box'] == 'true' || argv['hide-surrounding-box'] == 1,
+                argv['order-id'],
+                argv['cut-box'] == 'true' || argv['cut-box'] == 1
             );
             if(argv.output === 'object') {
                 console.log(JSON.stringify({
