@@ -321,6 +321,10 @@ const downloadFile = (path, url, cb) => {
                 cb(!valid);
             });
         });
+    }).on('error', (e) => {
+        if(fs.existsSync(path)) {
+            fs.unlinkSync(path);
+        }
     });
 }
 
