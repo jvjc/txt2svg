@@ -325,6 +325,7 @@ const downloadFile = (path, url, cb) => {
         if(fs.existsSync(path)) {
             fs.unlinkSync(path);
         }
+        cb(false);
     });
 }
 
