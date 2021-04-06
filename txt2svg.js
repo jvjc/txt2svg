@@ -227,6 +227,17 @@ module.exports.clearFonts = (name, version) => {
     fs.writeFileSync(`${fontsFolder}/metadata.json`, JSON.stringify(contentFile), 'utf-8');
 }
 
+const downloadFontAndUpdateMetadata = (path, url, hash, name, version, resolve, reject) => {
+    downloadFont(path, url, (error) => {
+        if(error) {
+            reject('failed to download font');
+        } else {
+            updateMetadata(hash, name, version);
+            resolve(hash);
+        }
+    });
+}
+
 module.exports.getFont = (url, name, version, cache) => {
     let fontName;
     if(url) {
@@ -240,28 +251,31 @@ module.exports.getFont = (url, name, version, cache) => {
         }
     }
 
-    return new Promise((resolve, reject) => {
-        if (!fs.existsSync(projectFolder)){
+    return new Promise(async (resolve, reject) => {
+        if (!fs.existsSync(projectFolder)) {
             fs.mkdirSync(projectFolder);
         }
-        if (!fs.existsSync(fontsFolder)){
+        if (!fs.existsSync(fontsFolder)) {
             fs.mkdirSync(fontsFolder);
         }
-        fs.exists(`${fontsFolder}/${fontName}`, exists => {
+        const path = `${fontsFolder}/${fontName}`;
+        fs.stat(path, (error, stats) => {
             const hash = fontName.slice(0, -4);
-            if(exists && cache) {
-                updateMetadata(hash, name, version);
-                resolve(hash);
+            if(stats && cache) {
+                verifyChecksum(url.slice(0, -3) + 'sha1', path, valid => {
+                    if(!valid) {
+                        if(fs.existsSync(path)) {
+                            fs.unlinkSync(path);
+                        }
+                        downloadFontAndUpdateMetadata(path, url, hash, name, version, resolve, reject);
+                    } else {
+                        updateMetadata(hash, name, version);
+                        resolve(hash);
+                    }
+                });
             } else {
                 if(url) {
-                    downloadFont(`${fontsFolder}/${fontName}`, url, (error) => {
-                        if(error) {
-                            reject('failed to download font');
-                        } else {
-                            updateMetadata(hash, name, version);
-                            resolve(hash);
-                        }
-                    });
+                    downloadFontAndUpdateMetadata(path, url, hash, name, version, resolve, reject);
                 } else {
                     reject('url not provided');
                 }
@@ -325,7 +339,7 @@ const downloadFile = (path, url, cb) => {
         if(fs.existsSync(path)) {
             fs.unlinkSync(path);
         }
-        cb(false);
+        cb(true);
     });
 }
 
