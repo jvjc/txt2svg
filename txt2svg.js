@@ -17,10 +17,10 @@ const getValue = (arg, defaultValue = false) => {
     return arg;
 }
 
-const getModelInfo = (font, fontSize, text, mergePaths) => {
-    let model = new makerjs.models.Text(font, text, fontSize, mergePaths);
-    let measure = makerjs.measure.modelExtents(model);
-    let width = measure.low[0] < 0 ? measure.width : measure.high[0];
+const getModelInfo = (font, fontSize, text) => {
+    const model = new makerjs.models.Text(font, text, fontSize);
+    const measure = makerjs.measure.modelExtents(model);
+    const width = measure.low[0] < 0 ? measure.width : measure.high[0];
     return {
         model,
         measure,
@@ -28,8 +28,8 @@ const getModelInfo = (font, fontSize, text, mergePaths) => {
     }
 }
 
-const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
-    let initialModelInfo = getModelInfo(font, fontSize, text, mergePaths);
+const getLineModel = (font, fontSize, text, maxWidth) => {
+    const initialModelInfo = getModelInfo(font, fontSize, text);
     let returnModel = initialModelInfo.model;
 
     let newLength = Math.floor(text.length * maxWidth / initialModelInfo.width);
@@ -40,7 +40,7 @@ const getLineModel = (font, fontSize, text, maxWidth, mergePaths) => {
             if(newLength > text.length) break;
             newText = text.substr(0, newLength);
             
-            let currentModelInfo = getModelInfo(font, fontSize, newText, mergePaths);
+            const currentModelInfo = getModelInfo(font, fontSize, newText);
             
             if(direction == 0) {
                 if(currentModelInfo.width < maxWidth) {
@@ -117,7 +117,7 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox) =
 
     cleaned.join('').split('\n').forEach(text => {
         do {
-            var lineModel = getLineModel(font, fontSize, text, aa ? maxWidth : Infinity, getValue(mP, false));
+            var lineModel = getLineModel(font, fontSize, text, aa ? maxWidth : Infinity);
             lineModel.model.origin = [0, originY];
             project.models[`model_${numLine++}`] = lineModel.model;
             let measure = makerjs.measure.modelExtents(lineModel.model);
@@ -173,9 +173,31 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox) =
                         stroke: outOfBox ? 'red' : 'blue',
                         strokeWidth: 4
                     }
-                }
+                },
             };
         }
+    }
+
+    if(getValue(mP, false)) {
+        Object.keys(project.models).forEach(key => {
+            const keys = Object.keys(project.models[key].models);
+    
+            for(let i = 0; i < keys.length; i += 1) {
+                if (keys[i + 1]) {
+                    const x = project.models[key].models[keys[i]];
+                    const y = project.models[key].models[keys[i + 1]];
+    
+                    const xMeasure = makerjs.measure.modelExtents(x);
+                    const yMeasure = makerjs.measure.modelExtents(y);
+        
+                    try {
+                        if (makerjs.measure.isMeasurementOverlapping(xMeasure, yMeasure)) {
+                            makerjs.model.combineUnion(x, y);
+                        }
+                    } catch (err) { /** ... */ }
+                }
+            }
+        });
     }
     
     return makerjs.exporter.toSVG(project, SVGoptions).replace(/vector-effect="non-scaling-stroke"/g, '');
