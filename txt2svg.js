@@ -181,20 +181,24 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox) =
     if(getValue(mP, false)) {
         Object.keys(project.models).forEach(key => {
             const keys = Object.keys(project.models[key].models);
-    
+
             for(let i = 0; i < keys.length; i += 1) {
                 if (keys[i + 1]) {
-                    const x = project.models[key].models[keys[i]];
-                    const y = project.models[key].models[keys[i + 1]];
-    
-                    const xMeasure = makerjs.measure.modelExtents(x);
-                    const yMeasure = makerjs.measure.modelExtents(y);
-        
-                    try {
-                        if (makerjs.measure.isMeasurementOverlapping(xMeasure, yMeasure)) {
-                            makerjs.model.combineUnion(x, y);
+                    const a = project.models[key].models[keys[i]];
+                    const b = project.models[key].models[keys[i + 1]];
+
+                    if (a && (a.models || a.path) && b && (b.models || b.path)) {
+                        const aMeasure = makerjs.measure.modelExtents(a);
+                        const bMeasure = makerjs.measure.modelExtents(b);
+            
+                        if (makerjs.measure.isMeasurementOverlapping(aMeasure, bMeasure)) {
+                            const z = makerjs.model.combine(a, b, false, true, false, true, {
+                                trimDeadEnds: false,
+                            });
+                            delete project.models[key].models[keys[i]];
+                            project.models[key].models[keys[i + 1]] = z;
                         }
-                    } catch (err) { /** ... */ }
+                    }
                 }
             }
         });
