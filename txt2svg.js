@@ -1,12 +1,15 @@
 const opentype = require('opentype.js');
 const makerjs = require('makerjs');
-const https = require('https');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
 const home = require('os').homedir();
 const projectFolder = `${home}/.txt2svg`;
 const fontsFolder = `${projectFolder}/fonts`;
+const axiosRetry = require('axios-retry');
+const axios = require('axios').default;
+
+axiosRetry(axios, { retries: 3 });
 
 const pointValue = 2.8346456693;
 
@@ -254,7 +257,7 @@ module.exports.clearFonts = (name, version) => {
 }
 
 const downloadFontAndUpdateMetadata = (path, url, hash, name, version, resolve, reject) => {
-    downloadFont(path, url, (error) => {
+    downloadFile(path, url, (error) => {
         if(error) {
             reject('failed to download font');
         } else {
@@ -310,21 +313,6 @@ module.exports.getFont = (url, name, version, cache) => {
     });
 }
 
-var maxTries = 0;
-const downloadFont = (fontPath, url, cb) => {
-    if(maxTries++ < 3) {
-        downloadFile(fontPath, url, error => {
-            if(error) {
-                downloadFont(fontPath, url, cb);
-            } else {
-                cb();
-            }
-        });
-    } else {
-        cb(true);
-    }
-}
-
 const getChecksum = filePath => {
     const fileContent = fs.readFileSync(filePath);
     return crypto.createHash('sha1').update(fileContent).digest('hex');
@@ -332,40 +320,52 @@ const getChecksum = filePath => {
 
 const verifyChecksum = (verificationURL, file, cb) => {
     const checksum = getChecksum(file);
-    https.get(verificationURL, response => {
-        let data = '';
-        response.on('data', chunk => {
-            data += chunk;
-        });
 
-        response.on('end', () => {
-            if(checksum === data.trim()) {
-                cb(true);
-            } else {
-                cb(false);
-            }
-        })
+    axios.get(verificationURL, {responseType: 'text'}).then((response) => {
+        if(checksum === response.data) {
+            cb(true);
+        } else {
+            cb(false);
+        }
+    }).catch((err) => {
+        cb(false);
     });
 }
 
 const downloadFile = (path, url, cb) => {
-    const file = fs.createWriteStream(path);
-    https.get(url, response => {
-        response.pipe(file).on('finish', () => {
-            verifyChecksum(url.slice(0, -3) + 'sha1', path, valid => {
-                if(!valid) {
-                    if(fs.existsSync(path)) {
-                        fs.unlinkSync(path);
-                    }
+    const writer = fs.createWriteStream(path);
+
+    axios({url, responseType: 'stream'}).then((response) => {
+        return new Promise((resolve, reject) => {
+            response.data.pipe(writer);
+
+            let error = null;
+            writer.on('error', err => {
+                error = err;
+                writer.close();
+                reject(err);
+            });
+
+            writer.on('close', () => {
+                if (!error) {
+                    resolve(true);
                 }
-                cb(!valid);
             });
         });
-    }).on('error', (e) => {
+    }).then(() => {
+        verifyChecksum(url.slice(0, -3) + 'sha1', path, (valid) => {
+            if(!valid) {
+                if(fs.existsSync(path)) {
+                    fs.unlinkSync(path);
+                }
+            }
+            cb(!valid);
+        });
+    }).catch((err) => {
         if(fs.existsSync(path)) {
             fs.unlinkSync(path);
         }
-        cb(true);
+        cb(err);
     });
 }
 
