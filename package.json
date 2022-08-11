@@ -1,5 +1,5 @@
 {
-  "name": "txt2svg",
+  "name": "@jvjc/txt2svg",
   "version": "1.1.0",
   "description": "",
   "main": "txt2svg.js",
