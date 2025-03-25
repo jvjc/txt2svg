@@ -1,18 +1,25 @@
-name: Publish Package to npmjs
+name: Publish package to npmjs
 on:
     push:
         branches:
             - 'main'
 jobs:
-    build:
+    publish:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v3
-            - uses: actions/setup-node@v3
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
               with:
-                  node-version: '14.x'
+                  node-version: '18.x' # Usa una versión actual de Node
                   registry-url: 'https://registry.npmjs.org'
+  
             - run: npm ci
-            - run: npm publish
+
+            - run: npm publish --access public
               env:
-                  NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+                NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
