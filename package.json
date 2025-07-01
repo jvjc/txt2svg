@@ -3,7 +3,10 @@
   "version": "1.2.0",
   "description": "",
   "main": "txt2svg.js",
-  "scripts": {},
+  "scripts": {
+    "test": "jest",
+    "test:coverage": "jest --coverage"
+  },
   "author": "Víctor Jiménez",
   "bin": {
     "txt2svg": "./bin.js"
@@ -16,5 +19,8 @@
     "makerjs": "^0.17.0",
     "minimist": "^1.2.5",
     "opentype.js": "^1.3.3"
+  },
+  "devDependencies": {
+    "jest": "^30.0.3"
   }
 }
