@@ -45,3 +45,22 @@ txt2svg --clear-fonts --font-name Pacifico
 // Eliminar todas las fuentes
 txt2svg --clear-fonts
 ```
+
+### Tests
+
+El proyecto incluye una suite de tests que cubre las funciones principales. Para ejecutar los tests:
+
+```bash
+# Ejecutar tests
+npm test
+
+# Ejecutar tests con reporte de cobertura
+npm run test:coverage
+```
+
+Los tests cubren:
+- Funciones exportadas del módulo principal (`getSVG`, `getFont`, `availableFonts`, `clearFonts`)
+- Funcionalidad de línea de comandos (CLI)
+- Validación de parámetros y manejo de errores
+
+Cobertura actual: >30% de las líneas de código
