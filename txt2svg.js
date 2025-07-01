@@ -41,7 +41,7 @@ const getLineModel = (font, fontSize, text, maxWidth) => {
         let direction = 0;
         while(true) {
             if(newLength > text.length) break;
-            newText = text.substr(0, newLength);
+            newText = text.substring(0, newLength);
             
             const currentModelInfo = getModelInfo(font, fontSize, newText);
             
@@ -72,11 +72,29 @@ const getLineModel = (font, fontSize, text, maxWidth) => {
     }
 
     return {
-        remaining: text.substr(newLength),
+        remaining: text.substring(newLength),
         model: returnModel
     }
 }
 
+/**
+ * Converts text to SVG using the specified font
+ * @param {string} t - Text to convert
+ * @param {string} f - Font hash/filename
+ * @param {number} w - Width
+ * @param {number} h - Height
+ * @param {number} fH - Font height
+ * @param {number} ls - Line spacing
+ * @param {boolean} mP - Merge path
+ * @param {boolean} aLB - Allow line break
+ * @param {boolean} aa - Auto adjust
+ * @param {boolean} cap - Cut area preview
+ * @param {boolean} nsb - Hide surrounding box
+ * @param {string} oID - Order ID
+ * @param {boolean} cbox - Cut box
+ * @returns {string} SVG string
+ * @throws {Error} When text is not defined
+ */
 module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
@@ -210,6 +228,10 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox) =
     return makerjs.exporter.toSVG(project, SVGoptions).replace(/vector-effect="non-scaling-stroke"/g, '');
 }
 
+/**
+ * Returns available fonts and their versions
+ * @returns {Object} Object containing font names as keys and version arrays as values
+ */
 module.exports.availableFonts = () => {
     let contentFile = getMetadataContent();
     let fonts = {};
@@ -220,7 +242,20 @@ module.exports.availableFonts = () => {
     return fonts;
 }
 
+/**
+ * Clears fonts from cache
+ * @param {string} [name] - Font name (optional)
+ * @param {string} [version] - Font version (optional)
+ */
 module.exports.clearFonts = (name, version) => {
+    // Ensure directories exist
+    if (!fs.existsSync(projectFolder)) {
+        fs.mkdirSync(projectFolder, { recursive: true });
+    }
+    if (!fs.existsSync(fontsFolder)) {
+        fs.mkdirSync(fontsFolder, { recursive: true });
+    }
+
     let contentFile = getMetadataContent();
     if(name && version) {
         if(contentFile[name] && contentFile[name].versions[version]) {
@@ -244,14 +279,18 @@ module.exports.clearFonts = (name, version) => {
         }
     } else {
         contentFile = {};
-        fs.readdir(fontsFolder, (err, files) => {
-            if (err) throw err;
-            for (const file of files) {
-                if(file !== 'metadata.json') {
-                    fs.unlinkSync(path.join(fontsFolder, file));
+        if (fs.existsSync(fontsFolder)) {
+            try {
+                const files = fs.readdirSync(fontsFolder);
+                for (const file of files) {
+                    if(file !== 'metadata.json') {
+                        fs.unlinkSync(path.join(fontsFolder, file));
+                    }
                 }
+            } catch (err) {
+                // Directory might not exist or be empty, that's fine
             }
-        });
+        }
     }
     fs.writeFileSync(`${fontsFolder}/metadata.json`, JSON.stringify(contentFile), 'utf-8');
 }
@@ -267,25 +306,41 @@ const downloadFontAndUpdateMetadata = (path, url, hash, name, version, resolve, 
     });
 }
 
+/**
+ * Downloads or retrieves a font
+ * @param {string} url - Font URL (optional if cached)
+ * @param {string} name - Font name
+ * @param {string} version - Font version
+ * @param {boolean} cache - Whether to use cache
+ * @returns {Promise<string>} Promise resolving to font hash
+ * @throws {Error} When name or version not provided, font not found, or URL not provided
+ */
 module.exports.getFont = (url, name, version, cache) => {
-    let fontName;
-    if(url) {
-        fontName = url.split('/').pop();
-    } else {
-        let contentFile = getMetadataContent();
-        if(contentFile[name] && contentFile[name].versions[version]) {
-            fontName = contentFile[name].versions[version] + '.ttf';
-        } else {
-            throw Error('font not found');
-        }
-    }
-
     return new Promise(async (resolve, reject) => {
+        // Input validation
+        if (!name || !version) {
+            reject(new Error('name and version are required'));
+            return;
+        }
+
+        let fontName;
+        if(url) {
+            fontName = url.split('/').pop();
+        } else {
+            let contentFile = getMetadataContent();
+            if(contentFile[name] && contentFile[name].versions[version]) {
+                fontName = contentFile[name].versions[version] + '.ttf';
+            } else {
+                reject(new Error('font not found'));
+                return;
+            }
+        }
+
         if (!fs.existsSync(projectFolder)) {
-            fs.mkdirSync(projectFolder);
+            fs.mkdirSync(projectFolder, { recursive: true });
         }
         if (!fs.existsSync(fontsFolder)) {
-            fs.mkdirSync(fontsFolder);
+            fs.mkdirSync(fontsFolder, { recursive: true });
         }
         const path = `${fontsFolder}/${fontName}`;
         fs.stat(path, (error, stats) => {
@@ -306,7 +361,7 @@ module.exports.getFont = (url, name, version, cache) => {
                 if(url) {
                     downloadFontAndUpdateMetadata(path, url, hash, name, version, resolve, reject);
                 } else {
-                    reject('url not provided');
+                    reject(new Error('url not provided'));
                 }
             }
         });
@@ -370,6 +425,14 @@ const downloadFile = (path, url, cb) => {
 }
 
 const updateMetadata = (hash, name, version) => {
+    // Ensure directories exist
+    if (!fs.existsSync(projectFolder)) {
+        fs.mkdirSync(projectFolder, { recursive: true });
+    }
+    if (!fs.existsSync(fontsFolder)) {
+        fs.mkdirSync(fontsFolder, { recursive: true });
+    }
+
     let contentFile = getMetadataContent();
     if(!contentFile[name]) {
         contentFile[name] = {

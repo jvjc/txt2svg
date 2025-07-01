@@ -39,6 +39,6 @@ if(argv['clear-fonts']) {
             console.error(error);
         });
     } else {
-        console.error('font-name or font-versión not defined');
+        console.error('font-name or font-version not defined');
     }
 }
