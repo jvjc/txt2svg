@@ -17,8 +17,10 @@ const cutAreaPadding = 5 * pointValue;
 // Opciones por defecto para la fase de limpieza / merge.
 // Se mantienen conservadoras para no alterar el comportamiento histórico.
 const defaultPreprocessOptions = {
-    snapGrid: 0.01,
-    minArea: 0.05,
+    // Desactivados por defecto para preservar geometría original y compatibilidad histórica.
+    // Se pueden activar explícitamente pasando preprocessOptions en getSVG.
+    snapGrid: 0,
+    minArea: 0,
     minRadius: 0.01, // reservado para compatibilidad futura
     quality: 'best',
     maxComponentSize: 150
@@ -135,7 +137,7 @@ const preprocessModel = (model, options) => {
             try {
                 const childMeasure = makerjs.measure.modelExtents(child);
                 const area = Math.abs(childMeasure.width * childMeasure.height);
-                if (!Number.isFinite(area) || area < options.minArea) {
+                if (!Number.isFinite(area) || (options.minArea > 0 && area < options.minArea)) {
                     delete model.models[key];
                 }
             } catch (error) {
@@ -309,7 +311,8 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox, p
         quality: (preprocessOptions.quality || defaultPreprocessOptions.quality).toString().toLowerCase()
     };
 
-    // Preprocesado geométrico previo a merge para reducir carga de booleanas.
+    // Preprocesado geométrico opcional: por defecto es no destructivo (sin snap/filtro por área).
+    // Si se quiere acelerar booleanas, activar explícitamente preprocessOptions (ej: snapGrid/minArea).
     Object.keys(project.models).forEach(key => {
         preprocessModel(project.models[key], processedOptions);
     });
