@@ -147,6 +147,10 @@ const preprocessModel = (model, options) => {
     }
 }
 
+const shouldRunPreprocess = (options) => {
+    return Number(options.snapGrid) > 0 || Number(options.minArea) > 0;
+}
+
 const mergeComponentModels = (models) => {
     if (!models || !models.length) return null;
     if (models.length === 1) return models[0];
@@ -177,19 +181,35 @@ const mergeOverlappingModels = (lineModel, options) => {
 
     const entries = keys.map(key => {
         const model = lineModel.models[key];
+        const measure = makerjs.measure.modelExtents(model);
         return {
             key,
             model,
-            measure: makerjs.measure.modelExtents(model)
+            measure
         };
     });
 
+    // Reduce comparaciones en el grafo de solape limitando candidatos por rango X.
+    const sortedIndexes = entries
+        .map((_, index) => index)
+        .sort((a, b) => entries[a].measure.low[0] - entries[b].measure.low[0]);
+
     const adjacency = entries.map(() => new Set());
-    for (let i = 0; i < entries.length; i += 1) {
-        for (let j = i + 1; j < entries.length; j += 1) {
-            if (makerjs.measure.isMeasurementOverlapping(entries[i].measure, entries[j].measure)) {
-                adjacency[i].add(j);
-                adjacency[j].add(i);
+    for (let i = 0; i < sortedIndexes.length; i += 1) {
+        const currentIndex = sortedIndexes[i];
+        const current = entries[currentIndex];
+
+        for (let j = i + 1; j < sortedIndexes.length; j += 1) {
+            const nextIndex = sortedIndexes[j];
+            const next = entries[nextIndex];
+
+            if (next.measure.low[0] > current.measure.high[0]) {
+                break;
+            }
+
+            if (makerjs.measure.isMeasurementOverlapping(current.measure, next.measure)) {
+                adjacency[currentIndex].add(nextIndex);
+                adjacency[nextIndex].add(currentIndex);
             }
         }
     }
@@ -311,11 +331,12 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox, p
         quality: (preprocessOptions.quality || defaultPreprocessOptions.quality).toString().toLowerCase()
     };
 
-    // Preprocesado geométrico opcional: por defecto es no destructivo (sin snap/filtro por área).
-    // Si se quiere acelerar booleanas, activar explícitamente preprocessOptions (ej: snapGrid/minArea).
-    Object.keys(project.models).forEach(key => {
-        preprocessModel(project.models[key], processedOptions);
-    });
+    // Preprocesado geométrico opcional: solo corre si snap/minArea fueron configurados.
+    if (shouldRunPreprocess(processedOptions)) {
+        Object.keys(project.models).forEach(key => {
+            preprocessModel(project.models[key], processedOptions);
+        });
+    }
 
     // Mantiene merge-path actual, con salida rápida opcional en quality=fast.
     if(getValue(mP, false) && processedOptions.quality !== 'fast') {
