@@ -23,7 +23,9 @@ const defaultPreprocessOptions = {
     minArea: 0,
     minRadius: 0.01, // reservado para compatibilidad futura
     quality: 'best',
-    maxComponentSize: 150
+    maxComponentSize: 150,
+    svgPrecision: 2,
+    compactSVG: true
 };
 
 const getValue = (arg, defaultValue = false) => {
@@ -149,6 +151,30 @@ const preprocessModel = (model, options) => {
 
 const shouldRunPreprocess = (options) => {
     return Number(options.snapGrid) > 0 || Number(options.minArea) > 0;
+}
+
+
+const formatSVGNumber = (value, precision) => {
+    if (!Number.isFinite(value)) return value;
+    const fixed = Number(value).toFixed(precision);
+    return Number(fixed).toString();
+}
+
+const simplifySVGNumbers = (svg, precision) => {
+    if (!Number.isFinite(precision) || precision < 0) return svg;
+
+    return svg.replace(/-?\d*\.?\d+(?:e[-+]?\d+)?/gi, token => {
+        const value = Number(token);
+        if (!Number.isFinite(value)) return token;
+        return formatSVGNumber(value, precision);
+    });
+}
+
+const compactSVGMarkup = (svg) => {
+    return svg
+        .replace(/>\s+</g, '><')
+        .replace(/\s{2,}/g, ' ')
+        .trim();
 }
 
 const mergeComponentModels = (models) => {
@@ -381,7 +407,17 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox, p
         }
     }
     
-    return makerjs.exporter.toSVG(project, SVGoptions).replace(/vector-effect="non-scaling-stroke"/g, '');
+    let svg = makerjs.exporter.toSVG(project, SVGoptions).replace(/vector-effect="non-scaling-stroke"/g, '');
+
+    if (processedOptions.compactSVG) {
+        svg = compactSVGMarkup(svg);
+    }
+
+    if (Number.isFinite(processedOptions.svgPrecision)) {
+        svg = simplifySVGNumbers(svg, processedOptions.svgPrecision);
+    }
+
+    return svg;
 }
 
 module.exports.availableFonts = () => {

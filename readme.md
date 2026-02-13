@@ -47,3 +47,9 @@ txt2svg --clear-fonts
 ```
 ### Optimización
 - Ver propuestas de simplificación y preprocesado en `docs/optimizacion_svg.md`.
+
+
+### Opciones de optimización SVG (opcionales)
+- `--svg-precision` (default interno: 2): redondea decimales para reducir peso del SVG.
+- `--compact-svg` (default interno: true): compacta espacios/saltos de línea del markup SVG.
+- `--snap-grid`, `--min-area`, `--quality`, `--max-component-size`: controles del preprocesado/merge avanzado.

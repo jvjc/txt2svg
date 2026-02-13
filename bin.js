@@ -1,6 +1,12 @@
 #!/usr/bin/env node
 const argv = require('minimist')(process.argv.slice(2));
 const txt2svg = require('./txt2svg');
+const parseBoolean = (value) => value == 'true' || value == 1 || value === true;
+const parseNumber = (value) => {
+    if (value === undefined || value === null || value === '') return undefined;
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+};
 if(argv['clear-fonts']) {
     txt2svg.clearFonts(argv['font-name'], argv['font-version']);
 } else if(argv['available-fonts']) {
@@ -8,6 +14,15 @@ if(argv['clear-fonts']) {
 } else {
     if(argv['font-name'] && argv['font-version']) {
         txt2svg.getFont(argv['font-url'], argv['font-name'], argv['font-version'], argv['font-caching'] == 'true' || argv['font-caching'] == 1).then(fontHash => {
+            const preprocessOptions = {
+                quality: argv['quality'],
+                snapGrid: parseNumber(argv['snap-grid']),
+                minArea: parseNumber(argv['min-area']),
+                maxComponentSize: parseNumber(argv['max-component-size']),
+                svgPrecision: parseNumber(argv['svg-precision']),
+                compactSVG: argv['compact-svg'] === undefined ? undefined : parseBoolean(argv['compact-svg'])
+            };
+
             let rs = txt2svg.getSVG(
                 argv.text,
                 fontHash,
@@ -16,12 +31,13 @@ if(argv['clear-fonts']) {
                 argv['font-height'] || 50,
                 argv['line-spacing'] || 2,
                 argv['merge-path'],
-                argv['allow-line-break'] == 'true' || argv['allow-line-break'] == 1,
-                argv['auto-adjust'] == 'true' || argv['auto-adjust'] == 1,
-                argv['cut-area-preview'] == 'true' || argv['cut-area-preview'] == 1,
-                argv['hide-surrounding-box'] == 'true' || argv['hide-surrounding-box'] == 1,
+                parseBoolean(argv['allow-line-break']),
+                parseBoolean(argv['auto-adjust']),
+                parseBoolean(argv['cut-area-preview']),
+                parseBoolean(argv['hide-surrounding-box']),
                 argv['order-id'],
-                argv['cut-box'] == 'true' || argv['cut-box'] == 1
+                parseBoolean(argv['cut-box']),
+                preprocessOptions
             );
             if(argv.output === 'object') {
                 console.log(JSON.stringify({
