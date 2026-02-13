@@ -45,3 +45,5 @@ txt2svg --clear-fonts --font-name Pacifico
 // Eliminar todas las fuentes
 txt2svg --clear-fonts
 ```
+### Optimización
+- Ver propuestas de simplificación y preprocesado en `docs/optimizacion_svg.md`.

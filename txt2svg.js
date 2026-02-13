@@ -14,6 +14,15 @@ axiosRetry(axios, { retries: 3 });
 const pointValue = 2.8346456693;
 
 const cutAreaPadding = 5 * pointValue;
+// Opciones por defecto para la fase de limpieza / merge.
+// Se mantienen conservadoras para no alterar el comportamiento histórico.
+const defaultPreprocessOptions = {
+    snapGrid: 0.01,
+    minArea: 0.05,
+    minRadius: 0.01, // reservado para compatibilidad futura
+    quality: 'best',
+    maxComponentSize: 150
+};
 
 const getValue = (arg, defaultValue = false) => {
     if(!arg || arg == 'false' || arg === true || arg < 0 || arg.toString().trim().length == 0) return defaultValue;
@@ -31,45 +40,44 @@ const getModelInfo = (font, fontSize, text) => {
     }
 }
 
+// Busca el máximo prefijo que cabe en maxWidth.
+// Usa búsqueda binaria para reducir mediciones sin cambiar el contrato de salida.
 const getLineModel = (font, fontSize, text, maxWidth) => {
     const initialModelInfo = getModelInfo(font, fontSize, text);
     let returnModel = initialModelInfo.model;
+    let newLength = text.length;
 
-    let newLength = Math.floor(text.length * maxWidth / initialModelInfo.width);
-
-    if (initialModelInfo.width > maxWidth) {
-        let direction = 0;
-        while(true) {
-            if(newLength > text.length) break;
-            newText = text.substr(0, newLength);
-            
-            const currentModelInfo = getModelInfo(font, fontSize, newText);
-            
-            if(direction == 0) {
-                if(currentModelInfo.width < maxWidth) {
-                    direction = 1;
-                }
-                if(currentModelInfo.width > maxWidth) {
-                    direction = -1;
-                }
-            }
-
-            if(direction == -1) {
-                if(currentModelInfo.width < maxWidth) {
-                    returnModel = currentModelInfo.model;
-                    break;
-                }
-            } else {
-                if(currentModelInfo.width > maxWidth) {
-                    newLength--;
-                    break;
-                }
-            }
-
-            returnModel = currentModelInfo.model;
-            newLength += direction;
+    if (!Number.isFinite(maxWidth) || initialModelInfo.width <= maxWidth) {
+        return {
+            remaining: '',
+            model: returnModel
         };
     }
+
+    let bestLength = 0;
+    let low = 1;
+    let high = text.length;
+
+    while (low <= high) {
+        const mid = Math.floor((low + high) / 2);
+        const newText = text.substr(0, mid);
+        const currentModelInfo = getModelInfo(font, fontSize, newText);
+
+        if (currentModelInfo.width <= maxWidth) {
+            bestLength = mid;
+            returnModel = currentModelInfo.model;
+            low = mid + 1;
+        } else {
+            high = mid - 1;
+        }
+    }
+
+    if (bestLength === 0) {
+        bestLength = 1;
+        returnModel = getModelInfo(font, fontSize, text.substr(0, 1)).model;
+    }
+
+    newLength = bestLength;
 
     return {
         remaining: text.substr(newLength),
@@ -77,7 +85,156 @@ const getLineModel = (font, fontSize, text, maxWidth) => {
     }
 }
 
-module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox) => {
+// Normaliza números a una rejilla para reducir micro-segmentos en operaciones booleanas.
+const snapNumber = (value, grid) => {
+    if (!grid || !Number.isFinite(value)) return value;
+    return Math.round(value / grid) * grid;
+}
+
+const snapPoint = (point, grid) => {
+    if (!Array.isArray(point)) return point;
+    return [snapNumber(point[0], grid), snapNumber(point[1], grid)];
+}
+
+const cleanPath = (pathModel, options) => {
+    if (!pathModel || typeof pathModel !== 'object') return pathModel;
+
+    if (pathModel.origin) pathModel.origin = snapPoint(pathModel.origin, options.snapGrid);
+    if (pathModel.end) pathModel.end = snapPoint(pathModel.end, options.snapGrid);
+    if (pathModel.start) pathModel.start = snapPoint(pathModel.start, options.snapGrid);
+    if (pathModel.middle) pathModel.middle = snapPoint(pathModel.middle, options.snapGrid);
+    if (Number.isFinite(pathModel.radius)) pathModel.radius = snapNumber(pathModel.radius, options.snapGrid);
+    if (Number.isFinite(pathModel.startAngle)) pathModel.startAngle = snapNumber(pathModel.startAngle, 0.01);
+    if (Number.isFinite(pathModel.endAngle)) pathModel.endAngle = snapNumber(pathModel.endAngle, 0.01);
+
+    if (Array.isArray(pathModel.controls)) {
+        pathModel.controls = pathModel.controls.map(control => snapPoint(control, options.snapGrid));
+    }
+
+    return pathModel;
+}
+
+// Limpia recursivamente el modelo: snap de coordenadas y descarte de submodelos mínimos/rotos.
+const preprocessModel = (model, options) => {
+    if (!model) return;
+    if (model.origin) {
+        model.origin = snapPoint(model.origin, options.snapGrid);
+    }
+
+    if (model.paths) {
+        Object.keys(model.paths).forEach(pathKey => {
+            model.paths[pathKey] = cleanPath(model.paths[pathKey], options);
+        });
+    }
+
+    if (model.models) {
+        Object.keys(model.models).forEach(key => {
+            const child = model.models[key];
+            preprocessModel(child, options);
+
+            try {
+                const childMeasure = makerjs.measure.modelExtents(child);
+                const area = Math.abs(childMeasure.width * childMeasure.height);
+                if (!Number.isFinite(area) || area < options.minArea) {
+                    delete model.models[key];
+                }
+            } catch (error) {
+                delete model.models[key];
+            }
+        });
+    }
+}
+
+const mergeComponentModels = (models) => {
+    if (!models || !models.length) return null;
+    if (models.length === 1) return models[0];
+
+    const sorted = models.slice().sort((a, b) => {
+        const aMeasure = makerjs.measure.modelExtents(a);
+        const bMeasure = makerjs.measure.modelExtents(b);
+        const aArea = Math.abs(aMeasure.width * aMeasure.height);
+        const bArea = Math.abs(bMeasure.width * bMeasure.height);
+        return aArea - bArea;
+    });
+
+    let merged = sorted[0];
+    for (let i = 1; i < sorted.length; i += 1) {
+        merged = makerjs.model.combine(merged, sorted[i], false, true, false, true, {
+            trimDeadEnds: false,
+        });
+    }
+
+    return merged;
+}
+
+// Construye componentes conectados por solape de bbox y combina por componente.
+const mergeOverlappingModels = (lineModel, options) => {
+    if (!lineModel || !lineModel.models) return;
+    const keys = Object.keys(lineModel.models);
+    if (keys.length < 2) return;
+
+    const entries = keys.map(key => {
+        const model = lineModel.models[key];
+        return {
+            key,
+            model,
+            measure: makerjs.measure.modelExtents(model)
+        };
+    });
+
+    const adjacency = entries.map(() => new Set());
+    for (let i = 0; i < entries.length; i += 1) {
+        for (let j = i + 1; j < entries.length; j += 1) {
+            if (makerjs.measure.isMeasurementOverlapping(entries[i].measure, entries[j].measure)) {
+                adjacency[i].add(j);
+                adjacency[j].add(i);
+            }
+        }
+    }
+
+    const visited = new Set();
+    const components = [];
+
+    for (let i = 0; i < entries.length; i += 1) {
+        if (visited.has(i)) continue;
+        const stack = [i];
+        const component = [];
+
+        while (stack.length) {
+            const index = stack.pop();
+            if (visited.has(index)) continue;
+            visited.add(index);
+            component.push(index);
+            adjacency[index].forEach(nextIndex => {
+                if (!visited.has(nextIndex)) stack.push(nextIndex);
+            });
+        }
+
+        components.push(component);
+    }
+
+    const mergedModels = {};
+    let mergedIndex = 0;
+    components.forEach(component => {
+        const componentModels = component.map(index => entries[index].model);
+        const canMerge = component.length > 1
+            && (options.quality === 'best' || (options.quality === 'balanced' && component.length <= options.maxComponentSize));
+
+        if (canMerge) {
+            mergedModels[`merged_${mergedIndex++}`] = mergeComponentModels(componentModels);
+            return;
+        }
+
+        component.forEach(index => {
+            const entry = entries[index];
+            mergedModels[entry.key] = entry.model;
+        });
+    });
+
+    lineModel.models = mergedModels;
+}
+
+module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox, preprocessOptions = {}) => {
     if(!getValue(t, false)) {
         throw Error('text not defined');
     }
@@ -145,29 +302,22 @@ module.exports.getSVG = (t, f, w, h, fH, ls, mP, aLB, aa, cap, nsb, oID, cbox) =
         } while (text.length > 0);
     });
 
-    if(getValue(mP, false)) {
+    // Normaliza opciones de preprocesado (sin requerir cambios en llamadas existentes).
+    const processedOptions = {
+        ...defaultPreprocessOptions,
+        ...preprocessOptions,
+        quality: (preprocessOptions.quality || defaultPreprocessOptions.quality).toString().toLowerCase()
+    };
+
+    // Preprocesado geométrico previo a merge para reducir carga de booleanas.
+    Object.keys(project.models).forEach(key => {
+        preprocessModel(project.models[key], processedOptions);
+    });
+
+    // Mantiene merge-path actual, con salida rápida opcional en quality=fast.
+    if(getValue(mP, false) && processedOptions.quality !== 'fast') {
         Object.keys(project.models).forEach(key => {
-            const keys = Object.keys(project.models[key].models);
-
-            for(let i = 0; i < keys.length; i += 1) {
-                if (keys[i + 1]) {
-                    const a = project.models[key].models[keys[i]];
-                    const b = project.models[key].models[keys[i + 1]];
-
-                    if (a && (a.models || a.path) && b && (b.models || b.path)) {
-                        const aMeasure = makerjs.measure.modelExtents(a);
-                        const bMeasure = makerjs.measure.modelExtents(b);
-            
-                        if (makerjs.measure.isMeasurementOverlapping(aMeasure, bMeasure)) {
-                            const z = makerjs.model.combine(a, b, false, true, false, true, {
-                                trimDeadEnds: false,
-                            });
-                            delete project.models[key].models[keys[i]];
-                            project.models[key].models[keys[i + 1]] = z;
-                        }
-                    }
-                }
-            }
+            mergeOverlappingModels(project.models[key], processedOptions);
         });
     }
 
